@@ -18,6 +18,32 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ParticlesClaud\CameraClass.h" />
+    <ClInclude Include="ParticlesClaud\D3DClass.h" />
+    <ClInclude Include="ParticlesClaud\DirectXUtils.h" />
+    <ClInclude Include="ParticlesClaud\GraphicsClass.h" />
+    <ClInclude Include="ParticlesClaud\InputClass.h" />
+    <ClInclude Include="ParticlesClaud\ParticlesShader.h" />
+    <ClInclude Include="ParticlesClaud\SystemClass.h" />
+    <ClInclude Include="ParticlesClaud\TextureClass.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="ParticlesClaud\CameraClass.cpp" />
+    <ClCompile Include="ParticlesClaud\D3DClass.cpp" />
+    <ClCompile Include="ParticlesClaud\DirectXUtils.cpp" />
+    <ClCompile Include="ParticlesClaud\GraphicsClass.cpp" />
+    <ClCompile Include="ParticlesClaud\InputClass.cpp" />
+    <ClCompile Include="ParticlesClaud\main.cpp" />
+    <ClCompile Include="ParticlesClaud\ParticlesShader.cpp" />
+    <ClCompile Include="ParticlesClaud\SystemClass.cpp" />
+    <ClCompile Include="ParticlesClaud\TextureClass.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="shaders\particlesCS.hlsl" />
+    <FxCompile Include="shaders\particlesPS.hlsl" />
+    <FxCompile Include="shaders\particlesVS.hlsl" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -128,6 +154,12 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>DirectXTK.lib;d3dcompiler.lib;dxgi.lib;d3d11.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <FxCompile>
+      <ShaderType>Effect</ShaderType>
+    </FxCompile>
+    <FxCompile>
+      <ShaderModel>5.0</ShaderModel>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -146,33 +178,13 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>DirectXTK.lib;d3dcompiler.lib;dxgi.lib;d3d11.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <FxCompile>
+      <ShaderType>Effect</ShaderType>
+    </FxCompile>
+    <FxCompile>
+      <ShaderModel>5.0</ShaderModel>
+    </FxCompile>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="CameraClass.cpp" />
-    <ClCompile Include="D3DClass.cpp" />
-    <ClCompile Include="DirectXUtils.cpp" />
-    <ClCompile Include="GraphicsClass.cpp" />
-    <ClCompile Include="InputClass.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="ParticlesShader.cpp" />
-    <ClCompile Include="SystemClass.cpp" />
-    <ClCompile Include="TextureClass.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="CameraClass.h" />
-    <ClInclude Include="D3DClass.h" />
-    <ClInclude Include="DirectXUtils.h" />
-    <ClInclude Include="GraphicsClass.h" />
-    <ClInclude Include="InputClass.h" />
-    <ClInclude Include="ParticlesShader.h" />
-    <ClInclude Include="SystemClass.h" />
-    <ClInclude Include="TextureClass.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="particlesCS.hlsl" />
-    <None Include="particlesPS.hlsl" />
-    <None Include="particlesVS.hlsl" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

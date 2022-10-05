@@ -9,18 +9,18 @@
 ParticlesShader::ParticlesShader()
     : m_vertexShader(nullptr)
     , m_pixelShader(nullptr)
+    , m_computeShader(nullptr)
     , m_sampleState(nullptr)
     , m_matrixBuffer(nullptr)
     , m_particlesBuffer(nullptr)
-    , m_computeShader(nullptr)
+    , m_quadBillboardBuffer(nullptr)
     , m_quadBillboardSRV(nullptr)
     , m_quadBillboardUAV(nullptr)
     , m_particlesUAV(nullptr)
+    , m_quadBillboardTextureSRV(nullptr)
 {
     std::uniform_real_distribution<float> distribution(-5.0f, 5.0f);
     std::default_random_engine generator;
-
-    // ParticleDataType emptyVertex{ { 0, 0, 0 }, { 0, 0, 0 } };
 
     m_particlesDataBuffer.reserve(s_ParticlesNumber);
     for (int i = 0; i < s_ParticlesNumber; ++i)
@@ -44,7 +44,12 @@ bool ParticlesShader::Initialize(ID3D11Device* device, HWND hwnd)
     bool result;
 
     // Initialize the vertex and pixel shaders.
-    result = InitializeShader(device, hwnd, PWSTR(L"./particlesVS.hlsl"), PWSTR(L"./particlesPS.hlsl"), PWSTR(L"./particlesCS.hlsl"));
+    result = InitializeShader(
+        device,
+        hwnd,
+        PWSTR(L"./shaders/particlesVS.hlsl"),
+        PWSTR(L"./shaders/particlesPS.hlsl"),
+        PWSTR(L"./shaders/particlesCS.hlsl"));
     if (!result)
     {
         return false;
@@ -169,11 +174,8 @@ bool ParticlesShader::InitializeShader(
 
     // Release the vertex shader buffer and pixel shader buffer since they are no
     // longer needed.
-    vertexShaderBuffer->Release();
-    vertexShaderBuffer = nullptr;
-
-    pixelShaderBuffer->Release();
-    pixelShaderBuffer = nullptr;
+    DirectXUtils::SafeRelease(vertexShaderBuffer);
+    DirectXUtils::SafeRelease(pixelShaderBuffer);
 
     // Setup the description of the dynamic matrix constant buffer that is in the
     // vertex shader.
@@ -288,55 +290,6 @@ bool ParticlesShader::InitializeTexture(ID3D11Device* device, std::wstring_view 
 
 void ParticlesShader::ShutdownShader()
 {
-    // Release the particles structured buffer.
-    if (m_particlesBuffer)
-    {
-        m_particlesBuffer->Release();
-        m_particlesBuffer = nullptr;
-    }
-
-    // Release the quad billboard structured buffer.
-    if (m_quadBillboardBuffer)
-    {
-        m_quadBillboardBuffer->Release();
-        m_quadBillboardBuffer = nullptr;
-    }
-
-    // Release the matrix constant buffer.
-    if (m_matrixBuffer)
-    {
-        m_matrixBuffer->Release();
-        m_matrixBuffer = nullptr;
-    }
-
-    // Release the sampler state.
-    if (m_sampleState)
-    {
-        m_sampleState->Release();
-        m_sampleState = nullptr;
-    }
-
-    // Release the pixel shader.
-    if (m_pixelShader)
-    {
-        m_pixelShader->Release();
-        m_pixelShader = nullptr;
-    }
-
-    // Release the vertex shader.
-    if (m_vertexShader)
-    {
-        m_vertexShader->Release();
-        m_vertexShader = nullptr;
-    }
-
-    // Release the compute shader.
-    if (m_computeShader)
-    {
-        m_computeShader->Release();
-        m_computeShader = nullptr;
-    }
-
     // Release the texture object.
     if (m_Texture)
     {
@@ -344,7 +297,17 @@ void ParticlesShader::ShutdownShader()
         m_Texture.reset();
     }
 
-    return;
+    DirectXUtils::SafeRelease(m_particlesBuffer);
+    DirectXUtils::SafeRelease(m_quadBillboardBuffer);
+    DirectXUtils::SafeRelease(m_matrixBuffer);
+    DirectXUtils::SafeRelease(m_sampleState);
+    DirectXUtils::SafeRelease(m_pixelShader);
+    DirectXUtils::SafeRelease(m_vertexShader);
+    DirectXUtils::SafeRelease(m_computeShader);
+    DirectXUtils::SafeRelease(m_particlesUAV);
+    DirectXUtils::SafeRelease(m_quadBillboardSRV);
+    DirectXUtils::SafeRelease(m_quadBillboardUAV);
+    DirectXUtils::SafeRelease(m_quadBillboardTextureSRV);
 }
 
 void ParticlesShader::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, std::wstring_view shaderFilename)
@@ -513,17 +476,8 @@ bool ParticlesShader::InitializeComputeShader(ID3D11Device* device, HWND hwnd, s
         nullptr,
         &m_computeShader);
 
-    if (computeShaderBuffer)
-    {
-        computeShaderBuffer->Release();
-        computeShaderBuffer = nullptr;
-    }
-
-    if (errorMessage)
-    {
-        errorMessage->Release();
-        errorMessage = nullptr;
-    }
+    DirectXUtils::SafeRelease(computeShaderBuffer);
+    DirectXUtils::SafeRelease(errorMessage);
 
     return true;
 }

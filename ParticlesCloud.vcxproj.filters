@@ -15,69 +15,69 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="SystemClass.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="InputClass.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GraphicsClass.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="D3DClass.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CameraClass.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ParticlesShader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DirectXUtils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="TextureClass.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="SystemClass.h">
+    <ClInclude Include="ParticlesClaud\CameraClass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="InputClass.h">
+    <ClInclude Include="ParticlesClaud\D3DClass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GraphicsClass.h">
+    <ClInclude Include="ParticlesClaud\DirectXUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D3DClass.h">
+    <ClInclude Include="ParticlesClaud\GraphicsClass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CameraClass.h">
+    <ClInclude Include="ParticlesClaud\InputClass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ParticlesShader.h">
+    <ClInclude Include="ParticlesClaud\ParticlesShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DirectXUtils.h">
+    <ClInclude Include="ParticlesClaud\SystemClass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TextureClass.h">
+    <ClInclude Include="ParticlesClaud\TextureClass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="particlesCS.hlsl">
+    <ClCompile Include="ParticlesClaud\CameraClass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticlesClaud\D3DClass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticlesClaud\DirectXUtils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticlesClaud\GraphicsClass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticlesClaud\InputClass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticlesClaud\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticlesClaud\ParticlesShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticlesClaud\SystemClass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticlesClaud\TextureClass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="shaders\particlesCS.hlsl">
       <Filter>Resource Files</Filter>
-    </None>
-    <None Include="particlesPS.hlsl">
+    </FxCompile>
+    <FxCompile Include="shaders\particlesPS.hlsl">
       <Filter>Resource Files</Filter>
-    </None>
-    <None Include="particlesVS.hlsl">
+    </FxCompile>
+    <FxCompile Include="shaders\particlesVS.hlsl">
       <Filter>Resource Files</Filter>
-    </None>
+    </FxCompile>
   </ItemGroup>
 </Project>

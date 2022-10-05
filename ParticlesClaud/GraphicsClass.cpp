@@ -35,7 +35,7 @@ bool GraphicsClass::Initialize(const int screenWidth, const int screenHeight, HW
     }
 
     // Set the initial position of the camera.
-    m_Camera->SetPosition(0.0f, 0.0f, -20.0f);
+    m_Camera->SetPosition(0.0f, 0.0f, -30.0f);
 
     // Create the light shader object.
     m_ParticlesShader = std::make_unique<ParticlesShader>();

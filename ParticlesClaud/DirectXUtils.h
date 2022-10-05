@@ -25,4 +25,17 @@ namespace DirectXUtils
     // Create Unordered Access View for Structured or Raw Buffers
     //--------------------------------------------------------------------------------------
     HRESULT CreateBufferUAV(_In_ ID3D11Device* pDevice, _In_ ID3D11Buffer* pBuffer, _Outptr_ ID3D11UnorderedAccessView** pUAVOut);
+
+    //--------------------------------------------------------------------------------------
+    // Release allocated resource.
+    //--------------------------------------------------------------------------------------
+    template<typename T>
+    void SafeRelease(T* resource)
+    {
+        if (resource)
+        {
+            resource->Release();
+            resource = nullptr;
+        }
+    }
 };
