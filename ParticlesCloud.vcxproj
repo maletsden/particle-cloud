@@ -156,6 +156,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ParticlesShader.cpp" />
     <ClCompile Include="SystemClass.cpp" />
+    <ClCompile Include="TextureClass.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CameraClass.h" />
@@ -165,6 +166,7 @@
     <ClInclude Include="InputClass.h" />
     <ClInclude Include="ParticlesShader.h" />
     <ClInclude Include="SystemClass.h" />
+    <ClInclude Include="TextureClass.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="particlesCS.hlsl" />

@@ -4,13 +4,13 @@ cbuffer Params
 	matrix ProjectionMatrix;
 };
 
-struct Particle
+struct VertexDataType
 {
-    float3 Position;
-    float3 Velocity;
+    float4 Position : POSITION;
+    float2 UV : TEXCOORD0;
 };
 
-StructuredBuffer<Particle> Particles : register(t0);
+StructuredBuffer<VertexDataType> VertexShaderInput : register(t0);
 
 struct VertexInput
 {
@@ -19,18 +19,17 @@ struct VertexInput
 
 struct PixelInput
 {
-	float4 Position : SV_POSITION; 
+    float4 Position : SV_POSITION;
+    float2 UV : TEXCOORD0;
 };
 
 PixelInput ParticleVS(VertexInput input)
 {
-	PixelInput output = (PixelInput)0;
+    VertexDataType data = VertexShaderInput[input.VertexID];
 
-	Particle particle = Particles[input.VertexID];
-
-	float4 worldPosition = float4(particle.Position, 1);
-	float4 viewPosition = mul(worldPosition, ViewMatrix);
-	output.Position = mul(viewPosition, ProjectionMatrix);
-
+    PixelInput output;
+    output.Position = mul(data.Position, ProjectionMatrix);
+    output.UV = data.UV;
+    
 	return output;
 }

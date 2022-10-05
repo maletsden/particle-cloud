@@ -1,6 +1,10 @@
+Texture2D shaderTexture;
+SamplerState SampleType;
+
 struct PixelInput
 {
-	float4 Position : SV_POSITION; 
+    float4 Position : SV_POSITION;
+    float2 UV : TEXCOORD0;
 };
 
 struct PixelOutput
@@ -12,7 +16,7 @@ PixelOutput ParticlePS(PixelInput input)
 {
 	PixelOutput output = (PixelOutput)0;
 
-	output.Color = float4((float3)1.0f, 1.0f);
+    output.Color = shaderTexture.Sample(SampleType, input.UV);
 	
 	return output;
 }

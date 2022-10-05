@@ -9,29 +9,29 @@
 ParticlesShader::ParticlesShader()
     : m_vertexShader(nullptr)
     , m_pixelShader(nullptr)
-    , m_layout(nullptr)
     , m_sampleState(nullptr)
     , m_matrixBuffer(nullptr)
     , m_particlesBuffer(nullptr)
     , m_computeShader(nullptr)
-    , m_particlesSRV(nullptr)
+    , m_quadBillboardSRV(nullptr)
+    , m_quadBillboardUAV(nullptr)
     , m_particlesUAV(nullptr)
 {
     std::uniform_real_distribution<float> distribution(-5.0f, 5.0f);
     std::default_random_engine generator;
 
-    m_particlesDataBuffer.resize(s_ParticlesNumber);
-    std::generate(
-        m_particlesDataBuffer.begin(),
-        m_particlesDataBuffer.end(),
-        [&]()
-        {
-            return ParticleDataType{
-                Vector3{ distribution(generator), distribution(generator), distribution(generator) },
-                Vector3{ 0.1f, 0.2f, 0.2f },
-                // Vector3{ distribution(generator), distribution(generator), distribution(generator) },
-            };
+    // ParticleDataType emptyVertex{ { 0, 0, 0 }, { 0, 0, 0 } };
+
+    m_particlesDataBuffer.reserve(s_ParticlesNumber);
+    for (int i = 0; i < s_ParticlesNumber; ++i)
+    {
+        m_particlesDataBuffer.push_back(ParticleDataType{
+            Vector3{ distribution(generator), distribution(generator), distribution(generator) },
+            Vector3{ distribution(generator), distribution(generator), distribution(generator) },
         });
+    }
+
+    m_quadBillboardDataBuffer.resize(s_ParticlesNumber * 6);
 }
 
 ParticlesShader::~ParticlesShader()
@@ -42,12 +42,16 @@ ParticlesShader::~ParticlesShader()
 bool ParticlesShader::Initialize(ID3D11Device* device, HWND hwnd)
 {
     bool result;
+
     // Initialize the vertex and pixel shaders.
     result = InitializeShader(device, hwnd, PWSTR(L"./particlesVS.hlsl"), PWSTR(L"./particlesPS.hlsl"), PWSTR(L"./particlesCS.hlsl"));
     if (!result)
     {
         return false;
     }
+
+    // Initialize billboards texture.
+    result = InitializeTexture(device, PWSTR(L"./assets/blue_texture.jpg"));
 
     return true;
 }
@@ -60,7 +64,7 @@ void ParticlesShader::Shutdown()
 bool ParticlesShader::Render(ID3D11DeviceContext* deviceContext, int indexCount, Matrix viewMatrix, Matrix projectionMatrix)
 {
     // Set the shader parameters that it will use for rendering.
-    const bool result = SetShaderParameters(deviceContext, viewMatrix, projectionMatrix);
+    const bool result = SetShaderParameters(deviceContext, viewMatrix, projectionMatrix, m_Texture->GetTexture());
     if (!result)
     {
         return false;
@@ -199,13 +203,30 @@ bool ParticlesShader::InitializeShader(
         return false;
     }
 
+    result = DirectXUtils::CreateStructuredBuffer(
+        device,
+        sizeof(VertexDataType),
+        m_quadBillboardDataBuffer.size(),
+        m_quadBillboardDataBuffer.data(),
+        &m_quadBillboardBuffer);
+    if (FAILED(result))
+    {
+        return false;
+    }
+
     result = DirectXUtils::CreateBufferUAV(device, m_particlesBuffer, &m_particlesUAV);
     if (FAILED(result))
     {
         return false;
     }
 
-    result = DirectXUtils::CreateBufferSRV(device, m_particlesBuffer, &m_particlesSRV);
+    result = DirectXUtils::CreateBufferSRV(device, m_quadBillboardBuffer, &m_quadBillboardSRV);
+    if (FAILED(result))
+    {
+        return false;
+    }
+
+    result = DirectXUtils::CreateBufferUAV(device, m_quadBillboardBuffer, &m_quadBillboardUAV);
     if (FAILED(result))
     {
         return false;
@@ -221,13 +242,64 @@ bool ParticlesShader::InitializeShader(
     return true;
 }
 
+bool ParticlesShader::InitializeTexture(ID3D11Device* device, std::wstring_view textureFilename)
+{
+    bool result;
+
+    // Create the texture object.
+    m_Texture = std::make_unique<TextureClass>();
+    if (!m_Texture)
+    {
+        return false;
+    }
+
+    // Initialize the texture object.
+    result = m_Texture->Initialize(device, textureFilename.data());
+    if (!result)
+    {
+        return false;
+    }
+
+    // Create a texture sampler state description.
+    D3D11_SAMPLER_DESC samplerDesc{};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+    samplerDesc.MipLODBias = 0.0f;
+    samplerDesc.MaxAnisotropy = 1;
+    samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+    samplerDesc.BorderColor[0] = 0;
+    samplerDesc.BorderColor[1] = 0;
+    samplerDesc.BorderColor[2] = 0;
+    samplerDesc.BorderColor[3] = 0;
+    samplerDesc.MinLOD = 0;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+    // Create the texture sampler state.
+    const auto samplerResult = device->CreateSamplerState(&samplerDesc, &m_sampleState);
+    if (FAILED(samplerResult))
+    {
+        return false;
+    }
+
+    return true;
+}
+
 void ParticlesShader::ShutdownShader()
 {
-    // Release the particles constant buffer.
+    // Release the particles structured buffer.
     if (m_particlesBuffer)
     {
         m_particlesBuffer->Release();
         m_particlesBuffer = nullptr;
+    }
+
+    // Release the quad billboard structured buffer.
+    if (m_quadBillboardBuffer)
+    {
+        m_quadBillboardBuffer->Release();
+        m_quadBillboardBuffer = nullptr;
     }
 
     // Release the matrix constant buffer.
@@ -242,13 +314,6 @@ void ParticlesShader::ShutdownShader()
     {
         m_sampleState->Release();
         m_sampleState = nullptr;
-    }
-
-    // Release the layout.
-    if (m_layout)
-    {
-        m_layout->Release();
-        m_layout = nullptr;
     }
 
     // Release the pixel shader.
@@ -270,6 +335,13 @@ void ParticlesShader::ShutdownShader()
     {
         m_computeShader->Release();
         m_computeShader = nullptr;
+    }
+
+    // Release the texture object.
+    if (m_Texture)
+    {
+        m_Texture->Shutdown();
+        m_Texture.reset();
     }
 
     return;
@@ -306,7 +378,11 @@ void ParticlesShader::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hw
     return;
 }
 
-bool ParticlesShader::SetShaderParameters(ID3D11DeviceContext* deviceContext, Matrix viewMatrix, Matrix projectionMatrix)
+bool ParticlesShader::SetShaderParameters(
+    ID3D11DeviceContext* deviceContext,
+    Matrix viewMatrix,
+    Matrix projectionMatrix,
+    ID3D11ShaderResourceView* texture)
 {
     HRESULT result;
     D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -342,8 +418,8 @@ bool ParticlesShader::SetShaderParameters(ID3D11DeviceContext* deviceContext, Ma
     // Now set the constant buffer in the vertex shader with the updated values.
     deviceContext->VSSetConstantBuffers(bufferNumber, 1, &m_matrixBuffer);
 
-    //// Set shader texture resource in the pixel shader.
-    // deviceContext->PSSetShaderResources(bufferNumber, 1, &texture);
+    // Set shader texture resource in the pixel shader.
+    deviceContext->PSSetShaderResources(0, 1, &texture);
 
     return true;
 }
@@ -359,28 +435,21 @@ void ParticlesShader::RenderShader(ID3D11DeviceContext* deviceContext, int index
     stride = 0;
     offset = 0;
 
-    deviceContext->VSSetShaderResources(0, 1, &m_particlesSRV);
+    deviceContext->VSSetShaderResources(0, 1, &m_quadBillboardSRV);
 
     // Set the vertex and pixel shaders that will be used to render this triangle.
     deviceContext->VSSetShader(m_vertexShader, nullptr, 0);
     deviceContext->PSSetShader(m_pixelShader, nullptr, 0);
-    // deviceContext->CSSetShader(m_computeShader, nullptr, 0);
 
-    // ID3D11UnorderedAccessView* ppUAViewnullptr[1] = { nullptr };
+    // Set the sampler state in the pixel shader.
+    deviceContext->PSSetSamplers(0, 1, &m_sampleState);
 
-    //// Set the sampler state in the pixel shader.
-    // deviceContext->PSSetSamplers(0, 1, &m_sampleState);
     deviceContext->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
 
-    deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+    deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     // Render the triangle.
-    deviceContext->Draw(m_particlesDataBuffer.size(), 0);
-
-    ID3D11ShaderResourceView* ppSRVnullptr[1] = { nullptr };
-    deviceContext->VSSetShaderResources(0, 1, ppSRVnullptr);
-
-    // deviceContext->DrawIndexed(indexCount, 0, 0);
+    deviceContext->Draw(m_quadBillboardDataBuffer.size(), 0);
 }
 
 bool ParticlesShader::InitializeComputeShader(ID3D11Device* device, HWND hwnd, std::wstring_view filename)
@@ -462,23 +531,16 @@ bool ParticlesShader::InitializeComputeShader(ID3D11Device* device, HWND hwnd, s
 void ParticlesShader::RunComputeShader(ID3D11DeviceContext* deviceContext)
 {
     deviceContext->CSSetShader(m_computeShader, nullptr, 0);
-    deviceContext->CSSetUnorderedAccessViews(0, 1, &m_particlesUAV, nullptr);
-    // if (pCBCS && pCSData)
-    //{
-    //    D3D11_MAPPED_SUBRESOURCE MappedResource;
-    //    deviceContext->Map(pCBCS, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource);
-    //    memcpy(MappedResource.pData, pCSData, dwNumDataBytes);
-    //    deviceContext->Unmap(pCBCS, 0);
-    //    ID3D11Buffer* ppCB[1] = { pCBCS };
-    //    pd3dImmediateContext->CSSetConstantBuffers(0, 1, ppCB);
-    //}
+    ID3D11UnorderedAccessView* views[2] = { m_particlesUAV, m_quadBillboardUAV };
+    deviceContext->CSSetUnorderedAccessViews(0, 2, views, nullptr);
+    deviceContext->CSSetConstantBuffers(0, 1, &m_matrixBuffer);
 
     deviceContext->Dispatch(m_particlesDataBuffer.size(), 1, 1);
 
     deviceContext->CSSetShader(nullptr, nullptr, 0);
 
-    ID3D11UnorderedAccessView* ppUAViewnullptr[1] = { nullptr };
-    deviceContext->CSSetUnorderedAccessViews(0, 1, ppUAViewnullptr, nullptr);
+    ID3D11UnorderedAccessView* ppUAViewnullptr[2] = { nullptr, nullptr };
+    deviceContext->CSSetUnorderedAccessViews(0, 2, ppUAViewnullptr, nullptr);
 
     ID3D11Buffer* ppCBnullptr[1] = { nullptr };
     deviceContext->CSSetConstantBuffers(0, 1, ppCBnullptr);
