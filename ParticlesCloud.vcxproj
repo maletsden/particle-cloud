@@ -19,30 +19,30 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ParticlesClaud\CameraClass.h" />
-    <ClInclude Include="ParticlesClaud\D3DClass.h" />
-    <ClInclude Include="ParticlesClaud\DirectXUtils.h" />
-    <ClInclude Include="ParticlesClaud\GraphicsClass.h" />
-    <ClInclude Include="ParticlesClaud\InputClass.h" />
-    <ClInclude Include="ParticlesClaud\ParticlesShader.h" />
-    <ClInclude Include="ParticlesClaud\SystemClass.h" />
-    <ClInclude Include="ParticlesClaud\TextureClass.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="ParticlesClaud\CameraClass.cpp" />
-    <ClCompile Include="ParticlesClaud\D3DClass.cpp" />
-    <ClCompile Include="ParticlesClaud\DirectXUtils.cpp" />
-    <ClCompile Include="ParticlesClaud\GraphicsClass.cpp" />
-    <ClCompile Include="ParticlesClaud\InputClass.cpp" />
-    <ClCompile Include="ParticlesClaud\main.cpp" />
-    <ClCompile Include="ParticlesClaud\ParticlesShader.cpp" />
-    <ClCompile Include="ParticlesClaud\SystemClass.cpp" />
-    <ClCompile Include="ParticlesClaud\TextureClass.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <FxCompile Include="shaders\particlesCS.hlsl" />
     <FxCompile Include="shaders\particlesPS.hlsl" />
     <FxCompile Include="shaders\particlesVS.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ParticlesCloud\CameraClass.h" />
+    <ClInclude Include="ParticlesCloud\D3DClass.h" />
+    <ClInclude Include="ParticlesCloud\DirectXUtils.h" />
+    <ClInclude Include="ParticlesCloud\GraphicsClass.h" />
+    <ClInclude Include="ParticlesCloud\InputClass.h" />
+    <ClInclude Include="ParticlesCloud\ParticlesShader.h" />
+    <ClInclude Include="ParticlesCloud\SystemClass.h" />
+    <ClInclude Include="ParticlesCloud\TextureClass.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="ParticlesCloud\CameraClass.cpp" />
+    <ClCompile Include="ParticlesCloud\D3DClass.cpp" />
+    <ClCompile Include="ParticlesCloud\DirectXUtils.cpp" />
+    <ClCompile Include="ParticlesCloud\GraphicsClass.cpp" />
+    <ClCompile Include="ParticlesCloud\InputClass.cpp" />
+    <ClCompile Include="ParticlesCloud\main.cpp" />
+    <ClCompile Include="ParticlesCloud\ParticlesShader.cpp" />
+    <ClCompile Include="ParticlesCloud\SystemClass.cpp" />
+    <ClCompile Include="ParticlesCloud\TextureClass.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
