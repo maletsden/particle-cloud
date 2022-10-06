@@ -22,6 +22,12 @@ private:
         Matrix projection;
     };
 
+    struct GravityFieldBufferType
+    {
+        Vector3 position;
+        float padding;
+    };
+
     struct ParticleDataType
     {
         Vector3 position;
@@ -31,6 +37,7 @@ private:
     struct VertexDataType
     {
         Vector4 position;
+        float velocity;
         Vector2 uv;
     };
 
@@ -67,13 +74,14 @@ private:
     void RunComputeShader(ID3D11DeviceContext* deviceContext);
 
 private:
-    constexpr static size_t s_ParticlesNumber = 100'000;
+    constexpr static size_t s_ParticlesNumber = 1000000;
 
     ID3D11VertexShader* m_vertexShader;
     ID3D11PixelShader* m_pixelShader;
     ID3D11ComputeShader* m_computeShader;
 
     ID3D11Buffer* m_matrixBuffer;
+    ID3D11Buffer* m_gravityFieldBuffer;
     ID3D11Buffer* m_particlesBuffer;
     ID3D11Buffer* m_quadBillboardBuffer;
 

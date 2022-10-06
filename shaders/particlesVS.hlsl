@@ -7,6 +7,7 @@ cbuffer Params
 struct VertexDataType
 {
     float4 Position : POSITION;
+    float Velocity;
     float2 UV : TEXCOORD0;
 };
 
@@ -20,6 +21,7 @@ struct VertexInput
 struct PixelInput
 {
     float4 Position : SV_POSITION;
+    float Velocity: COLOR0;
     float2 UV : TEXCOORD0;
 };
 
@@ -29,6 +31,7 @@ PixelInput ParticleVS(VertexInput input)
 
     PixelInput output;
     output.Position = mul(data.Position, ProjectionMatrix);
+    output.Velocity = data.Velocity;
     output.UV = data.UV;
     
 	return output;

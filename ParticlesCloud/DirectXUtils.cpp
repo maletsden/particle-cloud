@@ -22,6 +22,19 @@ HRESULT DirectXUtils::CreateStructuredBuffer(ID3D11Device* pDevice, UINT uElemen
     }
 }
 
+HRESULT DirectXUtils::CreateDynamicConstantBuffer(ID3D11Device* pDevice, UINT uElementSize, ID3D11Buffer** ppBufOut)
+{
+    D3D11_BUFFER_DESC desc{};
+    desc.Usage = D3D11_USAGE_DYNAMIC;
+    desc.ByteWidth = uElementSize;
+    desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    desc.MiscFlags = 0;
+    desc.StructureByteStride = 0;
+
+    return pDevice->CreateBuffer(&desc, nullptr, ppBufOut);
+}
+
 HRESULT DirectXUtils::CreateBufferSRV(ID3D11Device* pDevice, ID3D11Buffer* pBuffer, ID3D11ShaderResourceView** ppSRVOut)
 {
     D3D11_BUFFER_DESC descBuf{};

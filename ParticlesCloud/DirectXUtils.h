@@ -17,6 +17,14 @@ namespace DirectXUtils
         _Outptr_ ID3D11Buffer** ppBufOut);
 
     //--------------------------------------------------------------------------------------
+    // Create Dynamic Constant Buffer
+    //--------------------------------------------------------------------------------------
+    HRESULT CreateDynamicConstantBuffer(
+        _In_ ID3D11Device* pDevice,
+        _In_ UINT uElementSize,
+        _Outptr_ ID3D11Buffer** ppBufOut);
+
+    //--------------------------------------------------------------------------------------
     // Create Shader Resource View for Structured or Raw Buffers
     //--------------------------------------------------------------------------------------
     HRESULT CreateBufferSRV(_In_ ID3D11Device* pDevice, _In_ ID3D11Buffer* pBuffer, _Outptr_ ID3D11ShaderResourceView** ppSRVOut);

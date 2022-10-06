@@ -12,6 +12,7 @@ ParticlesShader::ParticlesShader()
     , m_computeShader(nullptr)
     , m_sampleState(nullptr)
     , m_matrixBuffer(nullptr)
+    , m_gravityFieldBuffer(nullptr)
     , m_particlesBuffer(nullptr)
     , m_quadBillboardBuffer(nullptr)
     , m_quadBillboardSRV(nullptr)
@@ -19,15 +20,15 @@ ParticlesShader::ParticlesShader()
     , m_particlesUAV(nullptr)
     , m_quadBillboardTextureSRV(nullptr)
 {
-    std::uniform_real_distribution<float> distribution(-5.0f, 5.0f);
+    std::uniform_real_distribution<float> positionDistribution(-25.5f, 25.5f);
     std::default_random_engine generator;
 
     m_particlesDataBuffer.reserve(s_ParticlesNumber);
     for (int i = 0; i < s_ParticlesNumber; ++i)
     {
         m_particlesDataBuffer.push_back(ParticleDataType{
-            Vector3{ distribution(generator), distribution(generator), distribution(generator) },
-            Vector3{ distribution(generator), distribution(generator), distribution(generator) },
+            Vector3{ positionDistribution(generator), positionDistribution(generator), positionDistribution(generator) },
+            Vector3{ 0.0f, 0.0f, 0.0f },
         });
     }
 
@@ -100,17 +101,15 @@ bool ParticlesShader::InitializeShader(
     vertexShaderBuffer = 0;
     pixelShaderBuffer = 0;
 
+    DWORD dwShaderFlags = D3DCOMPILE_ENABLE_STRICTNESS;
+#ifdef _DEBUG
+    dwShaderFlags |= D3DCOMPILE_DEBUG;
+    dwShaderFlags |= D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+
     // Compile the vertex shader code.
-    result = D3DCompileFromFile(
-        vsFilename.data(),
-        NULL,
-        NULL,
-        "ParticleVS",
-        "vs_5_0",
-        D3D10_SHADER_ENABLE_STRICTNESS,
-        0,
-        &vertexShaderBuffer,
-        &errorMessage);
+    result =
+        D3DCompileFromFile(vsFilename.data(), nullptr, nullptr, "ParticleVS", "vs_5_0", dwShaderFlags, 0, &vertexShaderBuffer, &errorMessage);
     if (FAILED(result))
     {
         // If the shader failed to compile it should have writen something to the
@@ -130,16 +129,8 @@ bool ParticlesShader::InitializeShader(
     }
 
     // Compile the pixel shader code.
-    result = D3DCompileFromFile(
-        psFilename.data(),
-        NULL,
-        NULL,
-        "ParticlePS",
-        "ps_5_0",
-        D3D10_SHADER_ENABLE_STRICTNESS,
-        0,
-        &pixelShaderBuffer,
-        &errorMessage);
+    result =
+        D3DCompileFromFile(psFilename.data(), nullptr, nullptr, "ParticlePS", "ps_5_0", dwShaderFlags, 0, &pixelShaderBuffer, &errorMessage);
     if (FAILED(result))
     {
         // If the shader failed to compile it should have writen something to the
@@ -177,18 +168,13 @@ bool ParticlesShader::InitializeShader(
     DirectXUtils::SafeRelease(vertexShaderBuffer);
     DirectXUtils::SafeRelease(pixelShaderBuffer);
 
-    // Setup the description of the dynamic matrix constant buffer that is in the
-    // vertex shader.
-    matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-    matrixBufferDesc.ByteWidth = sizeof(MatrixBufferType);
-    matrixBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    matrixBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    matrixBufferDesc.MiscFlags = 0;
-    matrixBufferDesc.StructureByteStride = 0;
+    result = DirectXUtils::CreateDynamicConstantBuffer(device, sizeof(MatrixBufferType), &m_matrixBuffer);
+    if (FAILED(result))
+    {
+        return false;
+    }
 
-    // Create the constant buffer pointer so we can access the vertex shader
-    // constant buffer from within this class.
-    result = device->CreateBuffer(&matrixBufferDesc, NULL, &m_matrixBuffer);
+    result = DirectXUtils::CreateDynamicConstantBuffer(device, sizeof(GravityFieldBufferType), &m_gravityFieldBuffer);
     if (FAILED(result))
     {
         return false;
@@ -349,10 +335,7 @@ bool ParticlesShader::SetShaderParameters(
 {
     HRESULT result;
     D3D11_MAPPED_SUBRESOURCE mappedResource;
-    unsigned int bufferNumber;
     MatrixBufferType* dataPtr;
-    // CameraBufferType* dataPtr3;
-    // LightBufferType* dataPtr2;
 
     // Transpose the matrices to prepare them for the shader.
     viewMatrix = viewMatrix.Transpose();
@@ -375,11 +358,8 @@ bool ParticlesShader::SetShaderParameters(
     // Unlock the constant buffer.
     deviceContext->Unmap(m_matrixBuffer, 0);
 
-    // Set the position of the constant buffer in the vertex shader.
-    bufferNumber = 0;
-
     // Now set the constant buffer in the vertex shader with the updated values.
-    deviceContext->VSSetConstantBuffers(bufferNumber, 1, &m_matrixBuffer);
+    deviceContext->VSSetConstantBuffers(0, 1, &m_matrixBuffer);
 
     // Set shader texture resource in the pixel shader.
     deviceContext->PSSetShaderResources(0, 1, &texture);
@@ -426,13 +406,7 @@ bool ParticlesShader::InitializeComputeShader(ID3D11Device* device, HWND hwnd, s
 
     DWORD dwShaderFlags = D3DCOMPILE_ENABLE_STRICTNESS;
 #ifdef _DEBUG
-    // Set the D3DCOMPILE_DEBUG flag to embed debug information in the shaders.
-    // Setting this flag improves the shader debugging experience, but still allows
-    // the shaders to be optimized and to run exactly the way they will run in
-    // the release configuration of this program.
     dwShaderFlags |= D3DCOMPILE_DEBUG;
-
-    // Disable optimizations to further improve shader debugging
     dwShaderFlags |= D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
@@ -484,10 +458,36 @@ bool ParticlesShader::InitializeComputeShader(ID3D11Device* device, HWND hwnd, s
 
 void ParticlesShader::RunComputeShader(ID3D11DeviceContext* deviceContext)
 {
+    HRESULT result;
+    D3D11_MAPPED_SUBRESOURCE mappedResource;
+    GravityFieldBufferType* gravityFieldDataPtr;
+    constexpr float deltaTime = 0.01f;
+    constexpr float circleRadius = 0.5f;
+    static float rotation = 0.0f;
+    static float positionX = 0.0f;
+
+    result = deviceContext->Map(m_gravityFieldBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+    if (FAILED(result))
+    {
+        return;
+    }
+
+    // Get a pointer to the data in the constant buffer.
+    gravityFieldDataPtr = (GravityFieldBufferType*)mappedResource.pData;
+    positionX += deltaTime;
+    rotation += deltaTime * 5;
+    const auto theta = DirectX::XMConvertToRadians(rotation);
+    gravityFieldDataPtr->position = { positionX, circleRadius * std::cos(theta), circleRadius * std::sin(theta) };
+
+    // Unlock the constant buffer.
+    deviceContext->Unmap(m_gravityFieldBuffer, 0);
+
+    ID3D11Buffer* constantBuffer[2] = { m_matrixBuffer, m_gravityFieldBuffer };
+
     deviceContext->CSSetShader(m_computeShader, nullptr, 0);
     ID3D11UnorderedAccessView* views[2] = { m_particlesUAV, m_quadBillboardUAV };
     deviceContext->CSSetUnorderedAccessViews(0, 2, views, nullptr);
-    deviceContext->CSSetConstantBuffers(0, 1, &m_matrixBuffer);
+    deviceContext->CSSetConstantBuffers(0, 2, constantBuffer);
 
     deviceContext->Dispatch(m_particlesDataBuffer.size(), 1, 1);
 
@@ -496,6 +496,6 @@ void ParticlesShader::RunComputeShader(ID3D11DeviceContext* deviceContext)
     ID3D11UnorderedAccessView* ppUAViewnullptr[2] = { nullptr, nullptr };
     deviceContext->CSSetUnorderedAccessViews(0, 2, ppUAViewnullptr, nullptr);
 
-    ID3D11Buffer* ppCBnullptr[1] = { nullptr };
-    deviceContext->CSSetConstantBuffers(0, 1, ppCBnullptr);
+    ID3D11Buffer* ppCBnullptr[2] = { nullptr, nullptr };
+    deviceContext->CSSetConstantBuffers(0, 2, ppCBnullptr);
 }

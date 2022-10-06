@@ -1,5 +1,4 @@
 #include "GraphicsClass.h"
-//#include <fstream>
 
 bool GraphicsClass::Initialize(const int screenWidth, const int screenHeight, HWND hwnd)
 {
@@ -20,22 +19,12 @@ bool GraphicsClass::Initialize(const int screenWidth, const int screenHeight, HW
         return false;
     }
 
-    // char cardName[128];
-    // int cardMemory;
-    // m_D3D->GetVideoCardInfo(cardName, cardMemory);
-    // std::ofstream myfile{"example.txt"};
-    // myfile << "Card name: " << cardName << ", card memory: " << cardMemory <<
-    // '\n'; myfile.close();
-
     // Create the camera object.
     m_Camera = std::make_unique<CameraClass>();
     if (!m_Camera)
     {
         return false;
     }
-
-    // Set the initial position of the camera.
-    m_Camera->SetPosition(0.0f, 0.0f, -30.0f);
 
     // Create the light shader object.
     m_ParticlesShader = std::make_unique<ParticlesShader>();
@@ -78,14 +67,10 @@ void GraphicsClass::Shutdown()
 bool GraphicsClass::Frame()
 {
     bool result;
-    // static float positionXDelta = 0.1f;
+    constexpr float deltaTime = 0.01f;
 
-    // Vector3 cameraPosition = m_Camera->GetPosition();
-    // if (std::abs(cameraPosition.x) > 5.0f)
-    //{
-    //    positionXDelta *= -1.0f;
-    //}
-    // m_Camera->SetPosition(cameraPosition.x + positionXDelta, 0.0f, -20.0f);
+    Vector3 cameraPosition = m_Camera->GetPosition();
+    m_Camera->SetPosition(cameraPosition.x + deltaTime, 0.0, -70.0);
 
     // Render the graphics scene.
     result = Render();
