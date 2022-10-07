@@ -12,18 +12,18 @@ TextureClass::~TextureClass()
     Shutdown();
 }
 
-bool TextureClass::Initialize(ID3D11Device* device, const WCHAR* filename)
+bool TextureClass::Initialize(ID3D11Device* device, std::wstring_view filename)
 {
     HRESULT result;
 
     // Load the texture.
-    if (std::wstring_view(filename).ends_with(L".dds"))
+    if (filename.ends_with(L".dds"))
     {
-        result = DirectX::CreateDDSTextureFromFile(device, filename, nullptr, &m_texture);
+        result = DirectX::CreateDDSTextureFromFile(device, filename.data(), nullptr, &m_texture);
     }
     else
     {
-        result = DirectX::CreateWICTextureFromFile(device, filename, nullptr, &m_texture);
+        result = DirectX::CreateWICTextureFromFile(device, filename.data(), nullptr, &m_texture);
     }
     if (FAILED(result))
     {

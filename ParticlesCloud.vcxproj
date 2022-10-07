@@ -19,30 +19,44 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="shaders\fontPS.hlsl" />
+    <FxCompile Include="shaders\fontVS.hlsl" />
     <FxCompile Include="shaders\particlesCS.hlsl" />
     <FxCompile Include="shaders\particlesPS.hlsl" />
     <FxCompile Include="shaders\particlesVS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ParticlesCloud\CameraClass.h" />
+    <ClInclude Include="ParticlesCloud\CpuClass.h" />
     <ClInclude Include="ParticlesCloud\D3DClass.h" />
     <ClInclude Include="ParticlesCloud\DirectXUtils.h" />
+    <ClInclude Include="ParticlesCloud\FontClass.h" />
+    <ClInclude Include="ParticlesCloud\FontShaderClass.h" />
+    <ClInclude Include="ParticlesCloud\FpsClass.h" />
     <ClInclude Include="ParticlesCloud\GraphicsClass.h" />
     <ClInclude Include="ParticlesCloud\InputClass.h" />
     <ClInclude Include="ParticlesCloud\ParticlesShader.h" />
     <ClInclude Include="ParticlesCloud\SystemClass.h" />
+    <ClInclude Include="ParticlesCloud\TextClass.h" />
     <ClInclude Include="ParticlesCloud\TextureClass.h" />
+    <ClInclude Include="ParticlesCloud\TimerClass.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ParticlesCloud\CameraClass.cpp" />
+    <ClCompile Include="ParticlesCloud\CpuClass.cpp" />
     <ClCompile Include="ParticlesCloud\D3DClass.cpp" />
     <ClCompile Include="ParticlesCloud\DirectXUtils.cpp" />
+    <ClCompile Include="ParticlesCloud\FontClass.cpp" />
+    <ClCompile Include="ParticlesCloud\FontShaderClass.cpp" />
+    <ClCompile Include="ParticlesCloud\FpsClass.cpp" />
     <ClCompile Include="ParticlesCloud\GraphicsClass.cpp" />
     <ClCompile Include="ParticlesCloud\InputClass.cpp" />
     <ClCompile Include="ParticlesCloud\main.cpp" />
     <ClCompile Include="ParticlesCloud\ParticlesShader.cpp" />
     <ClCompile Include="ParticlesCloud\SystemClass.cpp" />
+    <ClCompile Include="ParticlesCloud\TextClass.cpp" />
     <ClCompile Include="ParticlesCloud\TextureClass.cpp" />
+    <ClCompile Include="ParticlesCloud\TimerClass.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -152,7 +166,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>DirectXTK.lib;d3dcompiler.lib;dxgi.lib;d3d11.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>DirectXTK.lib;d3dcompiler.lib;dxgi.lib;d3d11.lib;pdh.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
       <ShaderType>Effect</ShaderType>
@@ -176,7 +190,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>DirectXTK.lib;d3dcompiler.lib;dxgi.lib;d3d11.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>DirectXTK.lib;d3dcompiler.lib;dxgi.lib;d3d11.lib;pdh.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
       <ShaderType>Effect</ShaderType>
