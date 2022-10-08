@@ -7,8 +7,8 @@ cbuffer Params
 struct VertexDataType
 {
     float4 Position : POSITION;
-    float Velocity;
     float2 UV : TEXCOORD0;
+    float2 Velocity;
 };
 
 StructuredBuffer<VertexDataType> VertexShaderInput : register(t0);
@@ -21,16 +21,21 @@ struct VertexInput
 struct PixelInput
 {
     float4 Position : SV_POSITION;
-    float Velocity: COLOR0;
     float2 UV : TEXCOORD0;
+    float2 Velocity : COLOR0;
 };
 
 PixelInput ParticleVS(VertexInput input)
 {
-    VertexDataType data = VertexShaderInput[input.VertexID];
+    const uint mapIndex[6] = { 0, 1, 2, 0, 2, 3 };
+    uint particleIndex = input.VertexID / 6;
+    uint vertexIndex = input.VertexID % 6;
+    uint index = particleIndex * 4 + mapIndex[vertexIndex];
+    
+    VertexDataType data = VertexShaderInput[index];
 
     PixelInput output;
-    output.Position = mul(data.Position, ProjectionMatrix);
+    output.Position = data.Position;
     output.Velocity = data.Velocity;
     output.UV = data.UV;
     

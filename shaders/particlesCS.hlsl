@@ -2,13 +2,14 @@ struct Particle
 {
     float3 Position;
     float3 Velocity;
+    float2 Padding;
 };
 
 struct VertexDataType
 {
     float4 Position;
-    float Velocity;
     float2 UV;
+    float2 Velocity;
 };
 
 cbuffer Params : register(b0)
@@ -50,16 +51,14 @@ VertexDataType _offsetNprojected(float4 position, float2 offset, float2 uv)
     return data;
 }
 
-//#define THREAD_GROUP_X 32
-//#define THREAD_GROUP_Y 24
-//#define THREAD_GROUP_TOTAL 768
-//[numthreads(THREAD_GROUP_X, THREAD_GROUP_Y, 1)]
-//void DefaultCS(uint3 groupID : SV_GroupID, uint groupIndex : SV_GroupIndex)
-[numthreads(1, 1, 1)]
-void DefaultCS(uint3 DTid : SV_DispatchThreadID)
+#define THREAD_GROUP_X 32
+#define THREAD_GROUP_Y 32
+#define THREAD_GROUP_TOTAL 1024
+
+[numthreads(THREAD_GROUP_X, THREAD_GROUP_Y, 1)]
+void DefaultCS(uint3 groupID : SV_GroupID, uint groupIndex : SV_GroupIndex)
 {    
-    // uint index = groupID.x * THREAD_GROUP_TOTAL + groupID.y * GroupDim * THREAD_GROUP_TOTAL + groupIndex;
-    uint index = DTid.x;
+    uint index = groupID.x * THREAD_GROUP_TOTAL + groupID.y * THREAD_GROUP_X * THREAD_GROUP_TOTAL + groupIndex;
 	
 	[flatten]
     if (index >= 1000000)
@@ -88,33 +87,31 @@ void DefaultCS(uint3 DTid : SV_DispatchThreadID)
     // Compute position of QuadBillboard.
     float4 worldPosition = float4(particle.Position, 1);
     float4 viewPosition = mul(worldPosition, ViewMatrix);
-    float velocityLength = length(particle.Velocity);
+    float2 velocityLength = float2(length(particle.Velocity), 0.0);
+    float4 imagePosition = mul(viewPosition, ProjectionMatrix);
     
     const float size = 0.01f;
-    VertexShaderInput[index * 6 + 0].Position = viewPosition + float4(-1, -1, 0, 0) * size;
-    VertexShaderInput[index * 6 + 0].Velocity = velocityLength;
-    VertexShaderInput[index * 6 + 0].UV = float2(0, 1);
+    float4 shift = mul(float4(size, size, 0, 0), ProjectionMatrix);
     
-    VertexShaderInput[index * 6 + 1].Position = viewPosition + float4(-1, 1, 0, 0) * size;
-    VertexShaderInput[index * 6 + 1].Velocity = velocityLength;
-    VertexShaderInput[index * 6 + 1].UV = float2(0, 0);
+    // Bottom left.
+    VertexShaderInput[index * 4 + 0].Position = imagePosition + float4(-shift.x, -shift.y, 0, 0);
+    VertexShaderInput[index * 4 + 0].Velocity = velocityLength;
+    VertexShaderInput[index * 4 + 0].UV = float2(0, 1);
+    
+    // Top left.
+    VertexShaderInput[index * 4 + 1].Position = imagePosition + float4(-shift.x, shift.y, 0, 0);
+    VertexShaderInput[index * 4 + 1].Velocity = velocityLength;
+    VertexShaderInput[index * 4 + 1].UV = float2(0, 0);
 
-    VertexShaderInput[index * 6 + 2].Position = viewPosition + float4(1, 1, 0, 0) * size;
-    VertexShaderInput[index * 6 + 2].Velocity = velocityLength;
-    VertexShaderInput[index * 6 + 2].UV = float2(1, 0);
+    // Top Right.
+    VertexShaderInput[index * 4 + 2].Position = imagePosition + float4(shift.x, shift.y, 0, 0);
+    VertexShaderInput[index * 4 + 2].Velocity = velocityLength;
+    VertexShaderInput[index * 4 + 2].UV = float2(1, 0);
     
-    VertexShaderInput[index * 6 + 3].Position = viewPosition + float4(-1, -1, 0, 0) * size;
-    VertexShaderInput[index * 6 + 3].Velocity = velocityLength;
-    VertexShaderInput[index * 6 + 3].UV = float2(0, 1);
-    
-    
-    VertexShaderInput[index * 6 + 4].Position = viewPosition + float4(1, 1, 0, 0) * size;
-    VertexShaderInput[index * 6 + 4].Velocity = velocityLength;
-    VertexShaderInput[index * 6 + 4].UV = float2(1, 0);
-    
-    VertexShaderInput[index * 6 + 5].Position = viewPosition + float4(1, -1, 0, 0) * size;
-    VertexShaderInput[index * 6 + 5].Velocity = velocityLength;
-    VertexShaderInput[index * 6 + 5].UV = float2(1, 1);
+    // Bottom right.
+    VertexShaderInput[index * 4 + 3].Position = imagePosition + float4(shift.x, -shift.y, 0, 0);
+    VertexShaderInput[index * 4 + 3].Velocity = velocityLength;
+    VertexShaderInput[index * 4 + 3].UV = float2(1, 1);
 }
 
 technique ParticleSolver

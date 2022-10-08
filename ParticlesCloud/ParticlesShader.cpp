@@ -32,7 +32,7 @@ ParticlesShader::ParticlesShader()
         });
     }
 
-    m_quadBillboardDataBuffer.resize(s_ParticlesNumber * 6);
+    m_quadBillboardDataBuffer.resize(s_VerticesNumber);
 }
 
 ParticlesShader::~ParticlesShader()
@@ -391,8 +391,8 @@ void ParticlesShader::RenderShader(ID3D11DeviceContext* deviceContext, int index
 
     deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    // Render the triangle.
-    deviceContext->Draw(m_quadBillboardDataBuffer.size(), 0);
+    // Render the triangles.
+    deviceContext->Draw(s_VertixIndeciesNumber, 0);
 }
 
 bool ParticlesShader::InitializeComputeShader(ID3D11Device* device, HWND hwnd, std::wstring_view filename)
@@ -489,7 +489,14 @@ void ParticlesShader::RunComputeShader(ID3D11DeviceContext* deviceContext)
     deviceContext->CSSetUnorderedAccessViews(0, 2, views, nullptr);
     deviceContext->CSSetConstantBuffers(0, 2, constantBuffer);
 
-    deviceContext->Dispatch(m_particlesDataBuffer.size(), 1, 1);
+    constexpr size_t threadGroupSize = 1024;
+    const auto numGroups = (m_particlesDataBuffer.size() % threadGroupSize != 0) ? ((m_particlesDataBuffer.size() / threadGroupSize) + 1)
+                                                                                : (m_particlesDataBuffer.size() / threadGroupSize);
+    const auto secondRoot = std::ceil(std::sqrt(static_cast<double>(numGroups)));
+    const auto groupSizeX = static_cast<int>(secondRoot);
+    const auto groupSizeY = static_cast<int>(secondRoot);
+
+    deviceContext->Dispatch(groupSizeX, groupSizeY, 1);
 
     deviceContext->CSSetShader(nullptr, nullptr, 0);
 

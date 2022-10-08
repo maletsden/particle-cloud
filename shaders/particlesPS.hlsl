@@ -4,8 +4,8 @@ SamplerState SampleType;
 struct PixelInput
 {
     float4 Position : SV_POSITION;
-    float Velocity : COLOR0;
     float2 UV : TEXCOORD0;
+    float2 Velocity : COLOR0;
 };
 
 struct PixelOutput
@@ -27,7 +27,7 @@ PixelOutput ParticlePS(PixelInput input)
 	PixelOutput output = (PixelOutput)0;
 
     float maxVelocity = 2.0f;
-    float velocity = min(input.Velocity, maxVelocity) / maxVelocity;
+    float velocity = min(input.Velocity.x, maxVelocity) / maxVelocity;
     float hue = (1.0 - velocity) * (4.0f / 6.0f);
 
     output.Color = float4(HueToRGB(hue), 0.5);

@@ -32,13 +32,14 @@ private:
     {
         Vector3 position;
         Vector3 velocity;
+        float padding[2];
     };
 
     struct VertexDataType
     {
         Vector4 position;
-        float velocity;
         Vector2 uv;
+        Vector2 velocity;
     };
 
 public:
@@ -75,6 +76,8 @@ private:
 
 private:
     constexpr static size_t s_ParticlesNumber = 1000000;
+    constexpr static size_t s_VerticesNumber = s_ParticlesNumber * 4;
+    constexpr static size_t s_VertixIndeciesNumber = s_ParticlesNumber * 6;
 
     ID3D11VertexShader* m_vertexShader;
     ID3D11PixelShader* m_pixelShader;
