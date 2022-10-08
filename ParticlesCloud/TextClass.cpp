@@ -1,5 +1,9 @@
 #include "TextClass.h"
 
+#include <vector>
+
+#include "DirectXUtils.h"
+
 TextClass::TextClass()
     : m_sentence1(nullptr)
     , m_sentence2(nullptr)
@@ -139,73 +143,65 @@ bool TextClass::Render(ID3D11DeviceContext* deviceContext, Matrix worldMatrix, M
     return true;
 }
 
-bool TextClass::InitializeSentence(SentenceType** sentence, int maxLength, ID3D11Device* device)
+bool TextClass::InitializeSentence(SentenceType** sentencesPtr, int maxLength, ID3D11Device* device)
 {
-    VertexType* vertices;
-    unsigned long* indices;
+    std::vector<VertexType> vertices;
+    std::vector<unsigned long> indices;
+
+    // VertexType* vertices;
+    // unsigned long* indices;
     D3D11_BUFFER_DESC vertexBufferDesc, indexBufferDesc;
     D3D11_SUBRESOURCE_DATA vertexData, indexData;
     HRESULT result;
-    int i;
 
     // Create a new sentence object.
-    *sentence = new SentenceType;
-    if (!*sentence)
+    *sentencesPtr = new SentenceType;
+    if (!*sentencesPtr)
     {
         return false;
     }
 
+    SentenceType* sentence = *sentencesPtr;
     // Initialize the sentence buffers to null.
-    (*sentence)->vertexBuffer = 0;
-    (*sentence)->indexBuffer = 0;
+    sentence->vertexBuffer = 0;
+    sentence->indexBuffer = 0;
 
     // Set the maximum length of the sentence.
-    (*sentence)->maxLength = maxLength;
+    sentence->maxLength = maxLength;
 
     // Set the number of vertices in the vertex array.
-    (*sentence)->vertexCount = 6 * maxLength;
+    sentence->vertexCount = 6 * maxLength;
 
     // Set the number of indexes in the index array.
-    (*sentence)->indexCount = (*sentence)->vertexCount;
+    sentence->indexCount = sentence->vertexCount;
 
-    // Create the vertex array.
-    vertices = new VertexType[(*sentence)->vertexCount];
-    if (!vertices)
-    {
-        return false;
-    }
+    // Create the vertex array and initialize vertex array to zeros at first.
+    vertices.resize(sentence->vertexCount);
 
     // Create the index array.
-    indices = new unsigned long[(*sentence)->indexCount];
-    if (!indices)
-    {
-        return false;
-    }
-
-    // Initialize vertex array to zeros at first.
-    memset(vertices, 0, (sizeof(VertexType) * (*sentence)->vertexCount));
+    indices.reserve(sentence->indexCount);
 
     // Initialize the index array.
-    for (i = 0; i < (*sentence)->indexCount; i++)
+    for (int i = 0; i < sentence->indexCount; i++)
     {
-        indices[i] = i;
+        indices.push_back(i);
     }
 
     // Set up the description of the dynamic vertex buffer.
     vertexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-    vertexBufferDesc.ByteWidth = sizeof(VertexType) * (*sentence)->vertexCount;
+    vertexBufferDesc.ByteWidth = sizeof(VertexType) * sentence->vertexCount;
     vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     vertexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     vertexBufferDesc.MiscFlags = 0;
     vertexBufferDesc.StructureByteStride = 0;
 
     // Give the subresource structure a pointer to the vertex data.
-    vertexData.pSysMem = vertices;
+    vertexData.pSysMem = vertices.data();
     vertexData.SysMemPitch = 0;
     vertexData.SysMemSlicePitch = 0;
 
     // Create the vertex buffer.
-    result = device->CreateBuffer(&vertexBufferDesc, &vertexData, &(*sentence)->vertexBuffer);
+    result = device->CreateBuffer(&vertexBufferDesc, &vertexData, &(sentence->vertexBuffer));
     if (FAILED(result))
     {
         return false;
@@ -213,31 +209,23 @@ bool TextClass::InitializeSentence(SentenceType** sentence, int maxLength, ID3D1
 
     // Set up the description of the static index buffer.
     indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    indexBufferDesc.ByteWidth = sizeof(unsigned long) * (*sentence)->indexCount;
+    indexBufferDesc.ByteWidth = sizeof(unsigned long) * sentence->indexCount;
     indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
     indexBufferDesc.CPUAccessFlags = 0;
     indexBufferDesc.MiscFlags = 0;
     indexBufferDesc.StructureByteStride = 0;
 
     // Give the subresource structure a pointer to the index data.
-    indexData.pSysMem = indices;
+    indexData.pSysMem = indices.data();
     indexData.SysMemPitch = 0;
     indexData.SysMemSlicePitch = 0;
 
     // Create the index buffer.
-    result = device->CreateBuffer(&indexBufferDesc, &indexData, &(*sentence)->indexBuffer);
+    result = device->CreateBuffer(&indexBufferDesc, &indexData, &(sentence->indexBuffer));
     if (FAILED(result))
     {
         return false;
     }
-
-    // Release the vertex array as it is no longer needed.
-    delete[] vertices;
-    vertices = 0;
-
-    // Release the index array as it is no longer needed.
-    delete[] indices;
-    indices = 0;
 
     return true;
 }
@@ -252,9 +240,6 @@ bool TextClass::UpdateSentence(
     float blue,
     ID3D11DeviceContext* deviceContext)
 {
-    int numLetters;
-    VertexType* vertices;
-    float drawX, drawY;
     HRESULT result;
     D3D11_MAPPED_SUBRESOURCE mappedResource;
     VertexType* verticesPtr;
@@ -265,7 +250,7 @@ bool TextClass::UpdateSentence(
     sentence->blue = blue;
 
     // Get the number of letters in the sentence.
-    numLetters = text.length();
+    const auto numLetters = text.length();
 
     // Check for possible buffer overflow.
     if (numLetters > sentence->maxLength)
@@ -273,22 +258,15 @@ bool TextClass::UpdateSentence(
         return false;
     }
 
-    // Create the vertex array.
-    vertices = new VertexType[sentence->vertexCount];
-    if (!vertices)
-    {
-        return false;
-    }
-
-    // Initialize vertex array to zeros at first.
-    memset(vertices, 0, (sizeof(VertexType) * sentence->vertexCount));
+    // Create the vertex array and initialize vertex array to zeros at first.
+    std::vector<VertexType> vertices(sentence->vertexCount);
 
     // Calculate the X and Y pixel position on the screen to start drawing to.
-    drawX = (float)(((m_screenWidth / 2) * -1) + positionX);
-    drawY = (float)((m_screenHeight / 2) - positionY);
+    const auto drawX = static_cast<float>(((m_screenWidth / 2) * -1) + positionX);
+    const auto drawY = static_cast<float>((m_screenHeight / 2) - positionY);
 
     // Use the font class to build the vertex array from the sentence text and sentence draw location.
-    m_Font->BuildVertexArray((void*)vertices, text, drawX, drawY);
+    m_Font->BuildVertexArray(vertices.data(), text, drawX, drawY);
 
     // Lock the vertex buffer so it can be written to.
     result = deviceContext->Map(sentence->vertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
@@ -298,42 +276,32 @@ bool TextClass::UpdateSentence(
     }
 
     // Get a pointer to the data in the vertex buffer.
-    verticesPtr = (VertexType*)mappedResource.pData;
+    verticesPtr = reinterpret_cast<VertexType*>(mappedResource.pData);
 
     // Copy the data into the vertex buffer.
-    memcpy(verticesPtr, (void*)vertices, (sizeof(VertexType) * sentence->vertexCount));
+    memcpy(verticesPtr, vertices.data(), (sizeof(VertexType) * sentence->vertexCount));
 
     // Unlock the vertex buffer.
     deviceContext->Unmap(sentence->vertexBuffer, 0);
 
-    // Release the vertex array as it is no longer needed.
-    delete[] vertices;
-    vertices = 0;
-
     return true;
 }
 
-void TextClass::ReleaseSentence(SentenceType** sentence)
+void TextClass::ReleaseSentence(SentenceType** sentencesPtr)
 {
-    if (*sentence)
+    if (*sentencesPtr)
     {
+        SentenceType* sentence = *sentencesPtr;
+        
         // Release the sentence vertex buffer.
-        if ((*sentence)->vertexBuffer)
-        {
-            (*sentence)->vertexBuffer->Release();
-            (*sentence)->vertexBuffer = 0;
-        }
+        DirectXUtils::SafeRelease(sentence->vertexBuffer);
 
         // Release the sentence index buffer.
-        if ((*sentence)->indexBuffer)
-        {
-            (*sentence)->indexBuffer->Release();
-            (*sentence)->indexBuffer = 0;
-        }
+        DirectXUtils::SafeRelease(sentence->indexBuffer);
 
         // Release the sentence.
-        delete *sentence;
-        *sentence = 0;
+        delete sentence;
+        *sentencesPtr = nullptr;
     }
 
     return;

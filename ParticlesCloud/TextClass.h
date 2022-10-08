@@ -19,7 +19,7 @@ private:
 
     struct VertexType
     {
-        Vector3 position;
+        Vector4 position;
         Vector2 texture;
     };
 

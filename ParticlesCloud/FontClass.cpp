@@ -147,32 +147,34 @@ void FontClass::BuildVertexArray(void* vertices, std::string_view sentence, floa
         else
         {
             // First triangle in quad.
-            vertexPtr[index].position = { drawX, drawY, 0.0f };  // Top left.
+            vertexPtr[index].position = { drawX, drawY, 0.0f, 1.0f };  // Top left.
             vertexPtr[index].texture = { m_Font[letter].left, 0.0f };
             index++;
 
             vertexPtr[index].position = { (drawX + (m_Font[letter].size * m_FontSize)),
                                           (drawY - (lineSize * m_FontSize)),
-                                          0.0f };  // Bottom right.
+                                          0.0f,
+                                          1.0f };  // Bottom right.
             vertexPtr[index].texture = { m_Font[letter].right, 1.0f };
             index++;
 
-            vertexPtr[index].position = { drawX, (drawY - (lineSize * m_FontSize)), 0.0f };  // Bottom left.
+            vertexPtr[index].position = { drawX, (drawY - (lineSize * m_FontSize)), 0.0f, 1.0f };  // Bottom left.
             vertexPtr[index].texture = { m_Font[letter].left, 1.0f };
             index++;
 
             // Second triangle in quad.
-            vertexPtr[index].position = { drawX, drawY, 0.0f };  // Top left.
+            vertexPtr[index].position = { drawX, drawY, 0.0f, 1.0f };  // Top left.
             vertexPtr[index].texture = { m_Font[letter].left, 0.0f };
             index++;
 
-            vertexPtr[index].position = { drawX + (m_Font[letter].size * m_FontSize), drawY, 0.0f };  // Top right.
+            vertexPtr[index].position = { drawX + (m_Font[letter].size * m_FontSize), drawY, 0.0f, 1.0f };  // Top right.
             vertexPtr[index].texture = { m_Font[letter].right, 0.0f };
             index++;
 
             vertexPtr[index].position = { (drawX + (m_Font[letter].size * m_FontSize)),
                                           (drawY - (lineSize * m_FontSize)),
-                                          0.0f };  // Bottom right.
+                                          0.0f,
+                                          1.0f };  // Bottom right.
             vertexPtr[index].texture = { m_Font[letter].right, 1.0f };
             index++;
 
