@@ -61,7 +61,7 @@ bool GraphicsClass::Initialize(const int screenWidth, const int screenHeight, HW
     }
 
     // Initialize the light shader object.
-    result = m_ParticlesShader->Initialize(m_D3D->GetDevice(), hwnd);
+    result = m_ParticlesShader->Initialize(m_D3D->GetDevice(), hwnd, screenWidth, screenHeight);
     if (!result)
     {
         MessageBox(hwnd, L"Could not initialize the particles shader object.", L"Error", MB_OK);
@@ -98,20 +98,20 @@ void GraphicsClass::Shutdown()
     return;
 }
 
-bool GraphicsClass::Frame(int fps, int cpu, float frameTime)
+bool GraphicsClass::Frame(int fps, int cpu, float frameTime, int mouseX, int mouseY)
 {
     bool result;
     constexpr float deltaTime = 0.01f;
 
     // Set the frames per second.
-    result = m_Text->SetFps(fps, m_D3D->GetDeviceContext());
+     result = m_Text->SetFps(fps, m_D3D->GetDeviceContext());
     if (!result)
     {
         return false;
     }
 
     // Set the cpu usage.
-    result = m_Text->SetCpu(cpu, m_D3D->GetDeviceContext());
+     result = m_Text->SetCpu(cpu, m_D3D->GetDeviceContext());
     if (!result)
     {
         return false;
@@ -119,6 +119,8 @@ bool GraphicsClass::Frame(int fps, int cpu, float frameTime)
 
     Vector3 cameraPosition = m_Camera->GetPosition();
     m_Camera->SetPosition(cameraPosition.x + deltaTime, 0.0, -70.0);
+
+    m_ParticlesShader->SetMousePosition(Vector2(mouseX, mouseY));
 
     // Render the graphics scene.
     result = Render();

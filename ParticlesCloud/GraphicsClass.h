@@ -23,7 +23,7 @@ public:
 
     bool Initialize(const int screenWidth, const int screenHeight, HWND hwnd);
     void Shutdown();
-    bool Frame(int fps, int cpu, float frameTime);
+    bool Frame(int fps, int cpu, float frameTime, int mouseX, int mouseY);
 
 private:
     bool Render();

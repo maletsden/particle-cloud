@@ -19,6 +19,8 @@ ParticlesShader::ParticlesShader()
     , m_quadBillboardUAV(nullptr)
     , m_particlesUAV(nullptr)
     , m_quadBillboardTextureSRV(nullptr)
+    , m_ScreenWidth(0)
+    , m_ScreenHeight(0)
 {
     std::uniform_real_distribution<float> positionDistribution(-25.5f, 25.5f);
     std::default_random_engine generator;
@@ -40,7 +42,7 @@ ParticlesShader::~ParticlesShader()
     Shutdown();
 }
 
-bool ParticlesShader::Initialize(ID3D11Device* device, HWND hwnd)
+bool ParticlesShader::Initialize(ID3D11Device* device, HWND hwnd, const int screenWidth, const int screenHeight)
 {
     bool result;
 
@@ -59,6 +61,9 @@ bool ParticlesShader::Initialize(ID3D11Device* device, HWND hwnd)
     // Initialize billboards texture.
     result = InitializeTexture(device, PWSTR(L"./assets/blue_texture.jpg"));
 
+    m_ScreenWidth = screenWidth;
+    m_ScreenHeight = screenHeight;
+
     return true;
 }
 
@@ -69,8 +74,16 @@ void ParticlesShader::Shutdown()
 
 bool ParticlesShader::Render(ID3D11DeviceContext* deviceContext, int indexCount, Matrix viewMatrix, Matrix projectionMatrix)
 {
+    bool result;
+
     // Set the shader parameters that it will use for rendering.
-    const bool result = SetShaderParameters(deviceContext, viewMatrix, projectionMatrix, m_Texture->GetTexture());
+    result = SetShaderParameters(deviceContext, viewMatrix, projectionMatrix, m_Texture->GetTexture());
+    if (!result)
+    {
+        return false;
+    }
+
+    result = UpdateGravityFieldPosition(deviceContext, viewMatrix, projectionMatrix);
     if (!result)
     {
         return false;
@@ -458,30 +471,6 @@ bool ParticlesShader::InitializeComputeShader(ID3D11Device* device, HWND hwnd, s
 
 void ParticlesShader::RunComputeShader(ID3D11DeviceContext* deviceContext)
 {
-    HRESULT result;
-    D3D11_MAPPED_SUBRESOURCE mappedResource;
-    GravityFieldBufferType* gravityFieldDataPtr;
-    constexpr float deltaTime = 0.01f;
-    constexpr float circleRadius = 0.5f;
-    static float rotation = 0.0f;
-    static float positionX = 0.0f;
-
-    result = deviceContext->Map(m_gravityFieldBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-    if (FAILED(result))
-    {
-        return;
-    }
-
-    // Get a pointer to the data in the constant buffer.
-    gravityFieldDataPtr = (GravityFieldBufferType*)mappedResource.pData;
-    positionX += deltaTime;
-    rotation += deltaTime * 5;
-    const auto theta = DirectX::XMConvertToRadians(rotation);
-    gravityFieldDataPtr->position = { positionX, circleRadius * std::cos(theta), circleRadius * std::sin(theta) };
-
-    // Unlock the constant buffer.
-    deviceContext->Unmap(m_gravityFieldBuffer, 0);
-
     ID3D11Buffer* constantBuffer[2] = { m_matrixBuffer, m_gravityFieldBuffer };
 
     deviceContext->CSSetShader(m_computeShader, nullptr, 0);
@@ -491,7 +480,7 @@ void ParticlesShader::RunComputeShader(ID3D11DeviceContext* deviceContext)
 
     constexpr size_t threadGroupSize = 1024;
     const auto numGroups = (m_particlesDataBuffer.size() % threadGroupSize != 0) ? ((m_particlesDataBuffer.size() / threadGroupSize) + 1)
-                                                                                : (m_particlesDataBuffer.size() / threadGroupSize);
+                                                                                 : (m_particlesDataBuffer.size() / threadGroupSize);
     const auto secondRoot = std::ceil(std::sqrt(static_cast<double>(numGroups)));
     const auto groupSizeX = static_cast<int>(secondRoot);
     const auto groupSizeY = static_cast<int>(secondRoot);
@@ -505,4 +494,85 @@ void ParticlesShader::RunComputeShader(ID3D11DeviceContext* deviceContext)
 
     ID3D11Buffer* ppCBnullptr[2] = { nullptr, nullptr };
     deviceContext->CSSetConstantBuffers(0, 2, ppCBnullptr);
+}
+
+bool ParticlesShader::UpdateGravityFieldPosition(ID3D11DeviceContext* deviceContext, Matrix viewMatrix, Matrix projectionMatrix)
+{
+    HRESULT result;
+    D3D11_MAPPED_SUBRESOURCE mappedResource;
+    GravityFieldBufferType* gravityFieldDataPtr = nullptr;
+    constexpr float deltaTime = 0.01f;
+    constexpr float circleRadius = 0.5f;
+    static float rotation = 0.0f;
+    static float positionX = 0.0f;
+
+    result = deviceContext->Map(m_gravityFieldBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+    if (FAILED(result))
+    {
+        return false;
+    }
+
+    // Get a pointer to the data in the constant buffer.
+    gravityFieldDataPtr = reinterpret_cast<GravityFieldBufferType*>(mappedResource.pData);
+
+    Matrix projectionInv = projectionMatrix.Invert();
+    Matrix viewInv = viewMatrix.Invert();
+
+    // 3 coordinates that defines XY-plane (in world coordinates).
+    Vector4 worldO = { 0, 0, 0, 1 };
+    Vector4 worldX = { 1, 0, 0, 1 };
+    Vector4 worldY = { 0, 1, 0, 1 };
+
+    // 3 coordinates that defines XY-plane (in camera coordinates).
+    Vector4 worldOInCamera = Vector4::Transform(worldO, viewMatrix);
+    Vector4 worldXInCamera = Vector4::Transform(worldX, viewMatrix);
+    Vector4 worldYInCamera = Vector4::Transform(worldY, viewMatrix);
+
+    // Camera position (in camera coordinates).
+    Vector4 cO = { 0, 0, 0, 1 };
+
+    // Normalize mouse position to range [-1, 1].
+    Vector4 mousePositionNormalize = Vector4(
+        (m_MousePosition.x / static_cast<float>(m_ScreenWidth)) * 2.0f - 1.0,
+        1.0 - (m_MousePosition.y / static_cast<float>(m_ScreenHeight)) * 2.0f,
+        0,
+        1);
+
+    // Unproject point (in camera coordinates).
+    Vector3 unprojectedDirection = Vector3(Vector4::Transform(mousePositionNormalize, projectionInv));
+
+    // Define equation Ax = b to calculate the intersection of "unprojectedDirection" and XY world plane.
+    Matrix A = Matrix{
+        Vector3{ worldXInCamera - worldOInCamera },
+        Vector3{ worldYInCamera - worldOInCamera },
+        -unprojectedDirection,
+    };
+    Vector3 b = Vector3(cO - worldOInCamera);
+    
+    // Calculate solution for x.
+    Vector3 solution = Vector3::Transform(b, A.Invert());
+
+    Vector3 resultPositionInCamera = cO + unprojectedDirection * solution.z;
+    Vector4 resultPositionInWorld =
+        Vector4::Transform(Vector4(resultPositionInCamera.x, resultPositionInCamera.y, resultPositionInCamera.z, 1.0f), viewInv);
+
+    // Add circular rotation.
+    positionX += deltaTime;
+    rotation += deltaTime * 5;
+    const auto theta = DirectX::XMConvertToRadians(rotation);
+
+    gravityFieldDataPtr->position = Vector3(
+        resultPositionInWorld.x,
+        resultPositionInWorld.y + circleRadius * std::cos(theta),
+        resultPositionInWorld.z + circleRadius * std::sin(theta));
+
+    // Unlock the constant buffer.
+    deviceContext->Unmap(m_gravityFieldBuffer, 0);
+
+    return true;
+}
+
+void ParticlesShader::SetMousePosition(const Vector2& mousePosition) noexcept
+{
+    m_MousePosition = mousePosition;
 }

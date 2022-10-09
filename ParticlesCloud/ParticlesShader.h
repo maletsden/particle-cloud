@@ -46,9 +46,10 @@ public:
     ParticlesShader();
     ~ParticlesShader();
 
-    bool Initialize(ID3D11Device* device, HWND hwnd);
+    bool Initialize(ID3D11Device* device, HWND hwnd, const int screenWidth, const int screenHeight);
     void Shutdown();
     bool Render(ID3D11DeviceContext* deviceContext, int indexCount, Matrix viewMatrix, Matrix projectionMatrix);
+    void SetMousePosition(const Vector2& mousePosition) noexcept;
 
 private:
     bool InitializeShader(
@@ -73,6 +74,9 @@ private:
     bool InitializeComputeShader(ID3D11Device* device, HWND hwnd, std::wstring_view filename);
 
     void RunComputeShader(ID3D11DeviceContext* deviceContext);
+    Vector3 getRayFromScreenSpace(const Vector2& position, Matrix viewMatrix, Matrix projectionMatrix);
+
+    bool UpdateGravityFieldPosition(ID3D11DeviceContext* deviceContext, Matrix viewMatrix, Matrix projectionMatrix);
 
 private:
     constexpr static size_t s_ParticlesNumber = 1000000;
@@ -98,6 +102,9 @@ private:
 
     ID3D11SamplerState* m_sampleState;
     std::unique_ptr<TextureClass> m_Texture;
+    Vector2 m_MousePosition;
+    int m_ScreenWidth;
+    int m_ScreenHeight;
 };
 
 #endif
