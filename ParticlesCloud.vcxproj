@@ -119,13 +119,13 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\src\vcpkg\packages\directxtk_x64-windows\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\src\vcpkg\packages\directxtk_x64-windows\debug\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>.\external\directxtk_x64-windows\include;$(IncludePath)</IncludePath>
+    <LibraryPath>.\external\directxtk_x64-windows\debug\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\src\vcpkg\packages\directxtk_x64-windows\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\src\vcpkg\packages\directxtk_x64-windows\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>.\external\directxtk_x64-windows\include;$(IncludePath)</IncludePath>
+    <LibraryPath>.\external\directxtk_x64-windows\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
