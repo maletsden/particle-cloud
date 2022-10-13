@@ -1,6 +1,7 @@
 #ifndef _LIGHTSHADERCLASS_H_
 #define _LIGHTSHADERCLASS_H_
 
+#include <chrono>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -16,16 +17,12 @@ using namespace DirectX::SimpleMath;
 class ParticlesShader
 {
 private:
-    struct MatrixBufferType
+    struct CSParametersBufferType
     {
-        Matrix view;
-        Matrix projection;
-    };
-
-    struct GravityFieldBufferType
-    {
-        Vector3 position;
-        float padding;
+        Matrix View;
+        Matrix Projection;
+        Vector3 GravityFieldPosition;
+        float DeltaTime;
     };
 
     struct ParticleDataType
@@ -48,7 +45,7 @@ public:
 
     bool Initialize(ID3D11Device* device, HWND hwnd, const int screenWidth, const int screenHeight);
     void Shutdown();
-    bool Render(ID3D11DeviceContext* deviceContext, int indexCount, Matrix viewMatrix, Matrix projectionMatrix);
+    bool Render(ID3D11DeviceContext* deviceContext, int indexCount, const Matrix& viewMatrix, const Matrix& projectionMatrix);
     void SetMousePosition(const Vector2& mousePosition) noexcept;
 
 private:
@@ -64,19 +61,16 @@ private:
     void ShutdownShader();
     void OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, std::wstring_view shaderFilename);
 
-    bool SetShaderParameters(
-        ID3D11DeviceContext* deviceContext,
-        Matrix viewMatrix,
-        Matrix projectionMatrix,
-        ID3D11ShaderResourceView* texture);
+    bool SetShaderParameters(ID3D11DeviceContext* deviceContext, ID3D11ShaderResourceView* texture);
     void RenderShader(ID3D11DeviceContext* deviceContext, int indexCount);
 
     bool InitializeComputeShader(ID3D11Device* device, HWND hwnd, std::wstring_view filename);
 
     void RunComputeShader(ID3D11DeviceContext* deviceContext);
-    Vector3 getRayFromScreenSpace(const Vector2& position, Matrix viewMatrix, Matrix projectionMatrix);
 
-    bool UpdateGravityFieldPosition(ID3D11DeviceContext* deviceContext, Matrix viewMatrix, Matrix projectionMatrix);
+    bool UpdateGravityFieldPosition(const Matrix& viewMatrix, const Matrix& projectionMatrix);
+    bool UpdateFrameDeltaTime() noexcept;
+    bool UpdateTransformationMatrices(const Matrix& viewMatrix, const Matrix& projectionMatrix) noexcept;
 
 private:
     constexpr static size_t s_ParticlesNumber = 1000000;
@@ -87,8 +81,7 @@ private:
     ID3D11PixelShader* m_pixelShader;
     ID3D11ComputeShader* m_computeShader;
 
-    ID3D11Buffer* m_matrixBuffer;
-    ID3D11Buffer* m_gravityFieldBuffer;
+    ID3D11Buffer* m_csParametersBuffer;
     ID3D11Buffer* m_particlesBuffer;
     ID3D11Buffer* m_quadBillboardBuffer;
 
@@ -105,6 +98,8 @@ private:
     Vector2 m_MousePosition;
     int m_ScreenWidth;
     int m_ScreenHeight;
+    CSParametersBufferType m_CSParameters;
+    std::chrono::high_resolution_clock::time_point m_lastSampleTime;
 };
 
 #endif

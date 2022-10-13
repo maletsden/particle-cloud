@@ -1,9 +1,3 @@
-cbuffer Params
-{
-	matrix ViewMatrix;
-	matrix ProjectionMatrix;
-};
-
 struct VertexDataType
 {
     float4 Position : POSITION;

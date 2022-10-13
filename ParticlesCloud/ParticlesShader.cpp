@@ -1,3 +1,5 @@
+#define NOMINMAX
+
 #include "ParticlesShader.h"
 
 #include <algorithm>
@@ -11,8 +13,7 @@ ParticlesShader::ParticlesShader()
     , m_pixelShader(nullptr)
     , m_computeShader(nullptr)
     , m_sampleState(nullptr)
-    , m_matrixBuffer(nullptr)
-    , m_gravityFieldBuffer(nullptr)
+    , m_csParametersBuffer(nullptr)
     , m_particlesBuffer(nullptr)
     , m_quadBillboardBuffer(nullptr)
     , m_quadBillboardSRV(nullptr)
@@ -21,6 +22,7 @@ ParticlesShader::ParticlesShader()
     , m_quadBillboardTextureSRV(nullptr)
     , m_ScreenWidth(0)
     , m_ScreenHeight(0)
+    , m_lastSampleTime(std::chrono::high_resolution_clock::time_point::max())
 {
     std::uniform_real_distribution<float> positionDistribution(-25.5f, 25.5f);
     std::default_random_engine generator;
@@ -72,18 +74,30 @@ void ParticlesShader::Shutdown()
     ShutdownShader();
 }
 
-bool ParticlesShader::Render(ID3D11DeviceContext* deviceContext, int indexCount, Matrix viewMatrix, Matrix projectionMatrix)
+bool ParticlesShader::Render(ID3D11DeviceContext* deviceContext, int indexCount, const Matrix& viewMatrix, const Matrix& projectionMatrix)
 {
     bool result;
 
-    // Set the shader parameters that it will use for rendering.
-    result = SetShaderParameters(deviceContext, viewMatrix, projectionMatrix, m_Texture->GetTexture());
+    result = UpdateFrameDeltaTime();
     if (!result)
     {
         return false;
     }
 
-    result = UpdateGravityFieldPosition(deviceContext, viewMatrix, projectionMatrix);
+    result = UpdateGravityFieldPosition(viewMatrix, projectionMatrix);
+    if (!result)
+    {
+        return false;
+    }
+
+    result = UpdateTransformationMatrices(viewMatrix, projectionMatrix);
+    if (!result)
+    {
+        return false;
+    }
+
+    // Set the shader parameters that it will use for rendering.
+    result = SetShaderParameters(deviceContext, m_Texture->GetTexture());
     if (!result)
     {
         return false;
@@ -181,13 +195,7 @@ bool ParticlesShader::InitializeShader(
     DirectXUtils::SafeRelease(vertexShaderBuffer);
     DirectXUtils::SafeRelease(pixelShaderBuffer);
 
-    result = DirectXUtils::CreateDynamicConstantBuffer(device, sizeof(MatrixBufferType), &m_matrixBuffer);
-    if (FAILED(result))
-    {
-        return false;
-    }
-
-    result = DirectXUtils::CreateDynamicConstantBuffer(device, sizeof(GravityFieldBufferType), &m_gravityFieldBuffer);
+    result = DirectXUtils::CreateDynamicConstantBuffer(device, sizeof(CSParametersBufferType), &m_csParametersBuffer);
     if (FAILED(result))
     {
         return false;
@@ -298,7 +306,7 @@ void ParticlesShader::ShutdownShader()
 
     DirectXUtils::SafeRelease(m_particlesBuffer);
     DirectXUtils::SafeRelease(m_quadBillboardBuffer);
-    DirectXUtils::SafeRelease(m_matrixBuffer);
+    DirectXUtils::SafeRelease(m_csParametersBuffer);
     DirectXUtils::SafeRelease(m_sampleState);
     DirectXUtils::SafeRelease(m_pixelShader);
     DirectXUtils::SafeRelease(m_vertexShader);
@@ -340,39 +348,29 @@ void ParticlesShader::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hw
     return;
 }
 
-bool ParticlesShader::SetShaderParameters(
-    ID3D11DeviceContext* deviceContext,
-    Matrix viewMatrix,
-    Matrix projectionMatrix,
-    ID3D11ShaderResourceView* texture)
+bool ParticlesShader::SetShaderParameters(ID3D11DeviceContext* deviceContext, ID3D11ShaderResourceView* texture)
 {
     HRESULT result;
     D3D11_MAPPED_SUBRESOURCE mappedResource;
-    MatrixBufferType* dataPtr;
-
-    // Transpose the matrices to prepare them for the shader.
-    viewMatrix = viewMatrix.Transpose();
-    projectionMatrix = projectionMatrix.Transpose();
+    CSParametersBufferType* dataPtr;
 
     // Lock the constant buffer so it can be written to.
-    result = deviceContext->Map(m_matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+    result = deviceContext->Map(m_csParametersBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
     if (FAILED(result))
     {
         return false;
     }
 
     // Get a pointer to the data in the constant buffer.
-    dataPtr = (MatrixBufferType*)mappedResource.pData;
+    dataPtr = reinterpret_cast<CSParametersBufferType*>(mappedResource.pData);
 
-    // Copy the matrices into the constant buffer.
-    dataPtr->view = viewMatrix;
-    dataPtr->projection = projectionMatrix;
+    *dataPtr = m_CSParameters;
 
     // Unlock the constant buffer.
-    deviceContext->Unmap(m_matrixBuffer, 0);
+    deviceContext->Unmap(m_csParametersBuffer, 0);
 
-    // Now set the constant buffer in the vertex shader with the updated values.
-    deviceContext->VSSetConstantBuffers(0, 1, &m_matrixBuffer);
+    // Now set the constant buffer in the compute shader with the updated values.
+    deviceContext->CSSetConstantBuffers(0, 1, &m_csParametersBuffer);
 
     // Set shader texture resource in the pixel shader.
     deviceContext->PSSetShaderResources(0, 1, &texture);
@@ -471,12 +469,9 @@ bool ParticlesShader::InitializeComputeShader(ID3D11Device* device, HWND hwnd, s
 
 void ParticlesShader::RunComputeShader(ID3D11DeviceContext* deviceContext)
 {
-    ID3D11Buffer* constantBuffer[2] = { m_matrixBuffer, m_gravityFieldBuffer };
-
     deviceContext->CSSetShader(m_computeShader, nullptr, 0);
     ID3D11UnorderedAccessView* views[2] = { m_particlesUAV, m_quadBillboardUAV };
     deviceContext->CSSetUnorderedAccessViews(0, 2, views, nullptr);
-    deviceContext->CSSetConstantBuffers(0, 2, constantBuffer);
 
     constexpr size_t threadGroupSize = 1024;
     const auto numGroups = (m_particlesDataBuffer.size() % threadGroupSize != 0) ? ((m_particlesDataBuffer.size() / threadGroupSize) + 1)
@@ -491,29 +486,13 @@ void ParticlesShader::RunComputeShader(ID3D11DeviceContext* deviceContext)
 
     ID3D11UnorderedAccessView* ppUAViewnullptr[2] = { nullptr, nullptr };
     deviceContext->CSSetUnorderedAccessViews(0, 2, ppUAViewnullptr, nullptr);
-
-    ID3D11Buffer* ppCBnullptr[2] = { nullptr, nullptr };
-    deviceContext->CSSetConstantBuffers(0, 2, ppCBnullptr);
 }
 
-bool ParticlesShader::UpdateGravityFieldPosition(ID3D11DeviceContext* deviceContext, Matrix viewMatrix, Matrix projectionMatrix)
+bool ParticlesShader::UpdateGravityFieldPosition(const Matrix& viewMatrix, const Matrix& projectionMatrix)
 {
-    HRESULT result;
-    D3D11_MAPPED_SUBRESOURCE mappedResource;
-    GravityFieldBufferType* gravityFieldDataPtr = nullptr;
-    constexpr float deltaTime = 0.01f;
     constexpr float circleRadius = 0.5f;
     static float rotation = 0.0f;
     static float positionX = 0.0f;
-
-    result = deviceContext->Map(m_gravityFieldBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-    if (FAILED(result))
-    {
-        return false;
-    }
-
-    // Get a pointer to the data in the constant buffer.
-    gravityFieldDataPtr = reinterpret_cast<GravityFieldBufferType*>(mappedResource.pData);
 
     Matrix projectionInv = projectionMatrix.Invert();
     Matrix viewInv = viewMatrix.Invert();
@@ -548,7 +527,7 @@ bool ParticlesShader::UpdateGravityFieldPosition(ID3D11DeviceContext* deviceCont
         -unprojectedDirection,
     };
     Vector3 b = Vector3(cO - worldOInCamera);
-    
+
     // Calculate solution for x.
     Vector3 solution = Vector3::Transform(b, A.Invert());
 
@@ -557,17 +536,14 @@ bool ParticlesShader::UpdateGravityFieldPosition(ID3D11DeviceContext* deviceCont
         Vector4::Transform(Vector4(resultPositionInCamera.x, resultPositionInCamera.y, resultPositionInCamera.z, 1.0f), viewInv);
 
     // Add circular rotation.
-    positionX += deltaTime;
-    rotation += deltaTime * 5;
+    positionX += m_CSParameters.DeltaTime;
+    rotation += 1.f * m_CSParameters.DeltaTime;
     const auto theta = DirectX::XMConvertToRadians(rotation);
 
-    gravityFieldDataPtr->position = Vector3(
+    m_CSParameters.GravityFieldPosition = Vector3(
         resultPositionInWorld.x,
         resultPositionInWorld.y + circleRadius * std::cos(theta),
         resultPositionInWorld.z + circleRadius * std::sin(theta));
-
-    // Unlock the constant buffer.
-    deviceContext->Unmap(m_gravityFieldBuffer, 0);
 
     return true;
 }
@@ -575,4 +551,28 @@ bool ParticlesShader::UpdateGravityFieldPosition(ID3D11DeviceContext* deviceCont
 void ParticlesShader::SetMousePosition(const Vector2& mousePosition) noexcept
 {
     m_MousePosition = mousePosition;
+}
+
+bool ParticlesShader::UpdateFrameDeltaTime() noexcept
+{
+    const auto now = std::chrono::high_resolution_clock::now();
+    const auto deltaTimeInMilliseconds =
+        std::max(std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastSampleTime).count(), 0LL);
+
+    // Set delta time.
+    constexpr auto timeScale = 1.f / 15.f;
+    m_CSParameters.DeltaTime = static_cast<float>(deltaTimeInMilliseconds) * timeScale;
+
+    m_lastSampleTime = now;
+
+    return true;
+}
+
+bool ParticlesShader::UpdateTransformationMatrices(const Matrix& viewMatrix, const Matrix& projectionMatrix) noexcept
+{
+    // Transpose the matrices to prepare them for the shader. Copy the matrices into the constant buffer.
+    m_CSParameters.View = viewMatrix.Transpose();
+    m_CSParameters.Projection = projectionMatrix.Transpose();
+
+    return true;
 }
