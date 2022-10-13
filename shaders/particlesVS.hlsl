@@ -1,11 +1,12 @@
-struct VertexDataType
+struct ParticleDataType
 {
-    float4 Position : POSITION;
-    float2 UV : TEXCOORD0;
-    float2 Velocity;
+    float4 PositionWorld;
+    float4 PositionImage : POSITION;
+    float3 Velocity;
+    float VelocityLength;
 };
 
-StructuredBuffer<VertexDataType> VertexShaderInput : register(t0);
+StructuredBuffer<ParticleDataType> Particles : register(t0);
 
 struct VertexInput
 {
@@ -15,8 +16,7 @@ struct VertexInput
 struct PixelInput
 {
     float4 Position : SV_POSITION;
-    float2 UV : TEXCOORD0;
-    float2 Velocity : COLOR0;
+    float4 Velocity : COLOR0;
 };
 
 PixelInput ParticleVS(VertexInput input)
@@ -26,12 +26,11 @@ PixelInput ParticleVS(VertexInput input)
     uint vertexIndex = input.VertexID % 6;
     uint index = particleIndex * 4 + mapIndex[vertexIndex];
     
-    VertexDataType data = VertexShaderInput[index];
+    ParticleDataType data = Particles[index];
 
     PixelInput output;
-    output.Position = data.Position;
-    output.Velocity = data.Velocity;
-    output.UV = data.UV;
+    output.Position = data.PositionImage;
+    output.Velocity.x = data.VelocityLength;
     
 	return output;
 }

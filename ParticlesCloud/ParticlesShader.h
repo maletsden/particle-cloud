@@ -27,16 +27,10 @@ private:
 
     struct ParticleDataType
     {
-        Vector3 position;
-        Vector3 velocity;
-        float padding[2];
-    };
-
-    struct VertexDataType
-    {
-        Vector4 position;
-        Vector2 uv;
-        Vector2 velocity;
+        Vector4 PositionWorld;
+        Vector4 PositionImage;
+        Vector3 Velocity;
+        float VelocityLength;
     };
 
 public:
@@ -83,15 +77,11 @@ private:
 
     ID3D11Buffer* m_csParametersBuffer;
     ID3D11Buffer* m_particlesBuffer;
-    ID3D11Buffer* m_quadBillboardBuffer;
 
     ID3D11UnorderedAccessView* m_particlesUAV;
-    ID3D11ShaderResourceView* m_quadBillboardSRV;
-    ID3D11UnorderedAccessView* m_quadBillboardUAV;
-    ID3D11ShaderResourceView* m_quadBillboardTextureSRV;
+    ID3D11ShaderResourceView* m_particlesSRV;
 
     std::vector<ParticleDataType> m_particlesDataBuffer;
-    std::vector<VertexDataType> m_quadBillboardDataBuffer;
 
     ID3D11SamplerState* m_sampleState;
     std::unique_ptr<TextureClass> m_Texture;

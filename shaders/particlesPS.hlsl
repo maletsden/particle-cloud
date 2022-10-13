@@ -4,8 +4,7 @@ SamplerState SampleType;
 struct PixelInput
 {
     float4 Position : SV_POSITION;
-    float2 UV : TEXCOORD0;
-    float2 Velocity : COLOR0;
+    float4 Velocity : COLOR0;
 };
 
 struct PixelOutput

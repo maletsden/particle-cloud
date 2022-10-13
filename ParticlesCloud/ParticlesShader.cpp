@@ -15,11 +15,8 @@ ParticlesShader::ParticlesShader()
     , m_sampleState(nullptr)
     , m_csParametersBuffer(nullptr)
     , m_particlesBuffer(nullptr)
-    , m_quadBillboardBuffer(nullptr)
-    , m_quadBillboardSRV(nullptr)
-    , m_quadBillboardUAV(nullptr)
     , m_particlesUAV(nullptr)
-    , m_quadBillboardTextureSRV(nullptr)
+    , m_particlesSRV(nullptr)
     , m_ScreenWidth(0)
     , m_ScreenHeight(0)
     , m_lastSampleTime(std::chrono::high_resolution_clock::time_point::max())
@@ -31,12 +28,12 @@ ParticlesShader::ParticlesShader()
     for (int i = 0; i < s_ParticlesNumber; ++i)
     {
         m_particlesDataBuffer.push_back(ParticleDataType{
-            Vector3{ positionDistribution(generator), positionDistribution(generator), positionDistribution(generator) },
+            Vector4{ positionDistribution(generator), positionDistribution(generator), positionDistribution(generator), 1.0f },
+            Vector4{ 0.0f, 0.0f, 0.0f, 0.0f },
             Vector3{ 0.0f, 0.0f, 0.0f },
+            0.0f
         });
     }
-
-    m_quadBillboardDataBuffer.resize(s_VerticesNumber);
 }
 
 ParticlesShader::~ParticlesShader()
@@ -212,30 +209,13 @@ bool ParticlesShader::InitializeShader(
         return false;
     }
 
-    result = DirectXUtils::CreateStructuredBuffer(
-        device,
-        sizeof(VertexDataType),
-        m_quadBillboardDataBuffer.size(),
-        m_quadBillboardDataBuffer.data(),
-        &m_quadBillboardBuffer);
-    if (FAILED(result))
-    {
-        return false;
-    }
-
     result = DirectXUtils::CreateBufferUAV(device, m_particlesBuffer, &m_particlesUAV);
     if (FAILED(result))
     {
         return false;
     }
 
-    result = DirectXUtils::CreateBufferSRV(device, m_quadBillboardBuffer, &m_quadBillboardSRV);
-    if (FAILED(result))
-    {
-        return false;
-    }
-
-    result = DirectXUtils::CreateBufferUAV(device, m_quadBillboardBuffer, &m_quadBillboardUAV);
+    result = DirectXUtils::CreateBufferSRV(device, m_particlesBuffer, &m_particlesSRV);
     if (FAILED(result))
     {
         return false;
@@ -305,16 +285,13 @@ void ParticlesShader::ShutdownShader()
     }
 
     DirectXUtils::SafeRelease(m_particlesBuffer);
-    DirectXUtils::SafeRelease(m_quadBillboardBuffer);
     DirectXUtils::SafeRelease(m_csParametersBuffer);
     DirectXUtils::SafeRelease(m_sampleState);
     DirectXUtils::SafeRelease(m_pixelShader);
     DirectXUtils::SafeRelease(m_vertexShader);
     DirectXUtils::SafeRelease(m_computeShader);
     DirectXUtils::SafeRelease(m_particlesUAV);
-    DirectXUtils::SafeRelease(m_quadBillboardSRV);
-    DirectXUtils::SafeRelease(m_quadBillboardUAV);
-    DirectXUtils::SafeRelease(m_quadBillboardTextureSRV);
+    DirectXUtils::SafeRelease(m_particlesSRV);
 }
 
 void ParticlesShader::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, std::wstring_view shaderFilename)
@@ -389,7 +366,7 @@ void ParticlesShader::RenderShader(ID3D11DeviceContext* deviceContext, int index
     stride = 0;
     offset = 0;
 
-    deviceContext->VSSetShaderResources(0, 1, &m_quadBillboardSRV);
+    deviceContext->VSSetShaderResources(0, 1, &m_particlesSRV);
 
     // Set the vertex and pixel shaders that will be used to render this triangle.
     deviceContext->VSSetShader(m_vertexShader, nullptr, 0);
@@ -470,8 +447,8 @@ bool ParticlesShader::InitializeComputeShader(ID3D11Device* device, HWND hwnd, s
 void ParticlesShader::RunComputeShader(ID3D11DeviceContext* deviceContext)
 {
     deviceContext->CSSetShader(m_computeShader, nullptr, 0);
-    ID3D11UnorderedAccessView* views[2] = { m_particlesUAV, m_quadBillboardUAV };
-    deviceContext->CSSetUnorderedAccessViews(0, 2, views, nullptr);
+    ID3D11UnorderedAccessView* views[1] = { m_particlesUAV };
+    deviceContext->CSSetUnorderedAccessViews(0, 1, views, nullptr);
 
     constexpr size_t threadGroupSize = 1024;
     const auto numGroups = (m_particlesDataBuffer.size() % threadGroupSize != 0) ? ((m_particlesDataBuffer.size() / threadGroupSize) + 1)
@@ -484,8 +461,8 @@ void ParticlesShader::RunComputeShader(ID3D11DeviceContext* deviceContext)
 
     deviceContext->CSSetShader(nullptr, nullptr, 0);
 
-    ID3D11UnorderedAccessView* ppUAViewnullptr[2] = { nullptr, nullptr };
-    deviceContext->CSSetUnorderedAccessViews(0, 2, ppUAViewnullptr, nullptr);
+    ID3D11UnorderedAccessView* ppUAViewnullptr[1] = { nullptr };
+    deviceContext->CSSetUnorderedAccessViews(0, 1, ppUAViewnullptr, nullptr);
 }
 
 bool ParticlesShader::UpdateGravityFieldPosition(const Matrix& viewMatrix, const Matrix& projectionMatrix)
