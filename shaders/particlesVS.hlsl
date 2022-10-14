@@ -21,12 +21,7 @@ struct PixelInput
 
 PixelInput ParticleVS(VertexInput input)
 {
-    const uint mapIndex[6] = { 0, 1, 2, 0, 2, 3 };
-    uint particleIndex = input.VertexID / 6;
-    uint vertexIndex = input.VertexID % 6;
-    uint index = particleIndex * 4 + mapIndex[vertexIndex];
-    
-    ParticleDataType data = Particles[index];
+    ParticleDataType data = Particles[input.VertexID];
 
     PixelInput output;
     output.Position = data.PositionImage;

@@ -43,6 +43,8 @@ public:
     void SetMousePosition(const Vector2& mousePosition) noexcept;
 
 private:
+    static std::vector<unsigned long> GenerateIndexBuffer(const unsigned long number) noexcept;
+
     bool InitializeShader(
         ID3D11Device* device,
         HWND hwnd,
@@ -77,11 +79,13 @@ private:
 
     ID3D11Buffer* m_csParametersBuffer;
     ID3D11Buffer* m_particlesBuffer;
+    ID3D11Buffer* m_indexBuffer;
 
     ID3D11UnorderedAccessView* m_particlesUAV;
     ID3D11ShaderResourceView* m_particlesSRV;
 
     std::vector<ParticleDataType> m_particlesDataBuffer;
+    std::vector<unsigned long> m_indexDataBuffer;
 
     ID3D11SamplerState* m_sampleState;
     std::unique_ptr<TextureClass> m_Texture;

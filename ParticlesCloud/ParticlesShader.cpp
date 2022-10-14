@@ -20,19 +20,24 @@ ParticlesShader::ParticlesShader()
     , m_ScreenWidth(0)
     , m_ScreenHeight(0)
     , m_lastSampleTime(std::chrono::high_resolution_clock::time_point::max())
+    , m_indexDataBuffer(GenerateIndexBuffer(s_ParticlesNumber))
 {
     std::uniform_real_distribution<float> positionDistribution(-25.5f, 25.5f);
     std::default_random_engine generator;
 
-    m_particlesDataBuffer.reserve(s_ParticlesNumber);
-    for (int i = 0; i < s_ParticlesNumber; ++i)
+    m_particlesDataBuffer.reserve(s_VerticesNumber);
+     for (int i = 0; i < s_ParticlesNumber; ++i)
     {
-        m_particlesDataBuffer.push_back(ParticleDataType{
+        const auto particle = ParticleDataType{
             Vector4{ positionDistribution(generator), positionDistribution(generator), positionDistribution(generator), 1.0f },
             Vector4{ 0.0f, 0.0f, 0.0f, 0.0f },
             Vector3{ 0.0f, 0.0f, 0.0f },
             0.0f
-        });
+        };
+        m_particlesDataBuffer.push_back(particle);
+        m_particlesDataBuffer.push_back(particle);
+        m_particlesDataBuffer.push_back(particle);
+        m_particlesDataBuffer.push_back(particle);
     }
 }
 
@@ -209,6 +214,28 @@ bool ParticlesShader::InitializeShader(
         return false;
     }
 
+    // Set up the description of the static index buffer.
+    D3D11_BUFFER_DESC indexBufferDesc;
+    D3D11_SUBRESOURCE_DATA indexData;
+    indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+    indexBufferDesc.ByteWidth = sizeof(unsigned long) * s_VertixIndeciesNumber;
+    indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    indexBufferDesc.CPUAccessFlags = 0;
+    indexBufferDesc.MiscFlags = 0;
+    indexBufferDesc.StructureByteStride = 0;
+
+    // Give the subresource structure a pointer to the index data.
+    indexData.pSysMem = m_indexDataBuffer.data();
+    indexData.SysMemPitch = 0;
+    indexData.SysMemSlicePitch = 0;
+
+    // Create the index buffer.
+    result = device->CreateBuffer(&indexBufferDesc, &indexData, &m_indexBuffer);
+    if (FAILED(result))
+    {
+        return false;
+    }
+
     result = DirectXUtils::CreateBufferUAV(device, m_particlesBuffer, &m_particlesUAV);
     if (FAILED(result))
     {
@@ -368,6 +395,9 @@ void ParticlesShader::RenderShader(ID3D11DeviceContext* deviceContext, int index
 
     deviceContext->VSSetShaderResources(0, 1, &m_particlesSRV);
 
+    // Set the index buffer to active in the input assembler so it can be rendered.
+    deviceContext->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
     // Set the vertex and pixel shaders that will be used to render this triangle.
     deviceContext->VSSetShader(m_vertexShader, nullptr, 0);
     deviceContext->PSSetShader(m_pixelShader, nullptr, 0);
@@ -380,7 +410,7 @@ void ParticlesShader::RenderShader(ID3D11DeviceContext* deviceContext, int index
     deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     // Render the triangles.
-    deviceContext->Draw(s_VertixIndeciesNumber, 0);
+    deviceContext->DrawIndexed(s_VertixIndeciesNumber, 0, 0);
 }
 
 bool ParticlesShader::InitializeComputeShader(ID3D11Device* device, HWND hwnd, std::wstring_view filename)
@@ -451,8 +481,8 @@ void ParticlesShader::RunComputeShader(ID3D11DeviceContext* deviceContext)
     deviceContext->CSSetUnorderedAccessViews(0, 1, views, nullptr);
 
     constexpr size_t threadGroupSize = 1024;
-    const auto numGroups = (m_particlesDataBuffer.size() % threadGroupSize != 0) ? ((m_particlesDataBuffer.size() / threadGroupSize) + 1)
-                                                                                 : (m_particlesDataBuffer.size() / threadGroupSize);
+    const auto numGroups =
+        (s_ParticlesNumber % threadGroupSize != 0) ? ((s_ParticlesNumber / threadGroupSize) + 1) : (s_ParticlesNumber / threadGroupSize);
     const auto secondRoot = std::ceil(std::sqrt(static_cast<double>(numGroups)));
     const auto groupSizeX = static_cast<int>(secondRoot);
     const auto groupSizeY = static_cast<int>(secondRoot);
@@ -552,4 +582,25 @@ bool ParticlesShader::UpdateTransformationMatrices(const Matrix& viewMatrix, con
     m_CSParameters.Projection = projectionMatrix.Transpose();
 
     return true;
+}
+
+std::vector<unsigned long> ParticlesShader::GenerateIndexBuffer(const unsigned long number) noexcept
+{
+    std::vector<unsigned long> indecies;
+    indecies.reserve(number * 6UL);
+
+    for (unsigned long i = 0; i < number; ++i)
+    {
+        // First triangle.
+        indecies.push_back(i * 4 + 0);
+        indecies.push_back(i * 4 + 1);
+        indecies.push_back(i * 4 + 2);
+
+        // Second triangle.
+        indecies.push_back(i * 4 + 0);
+        indecies.push_back(i * 4 + 2);
+        indecies.push_back(i * 4 + 3);
+    }
+
+    return indecies;
 }
